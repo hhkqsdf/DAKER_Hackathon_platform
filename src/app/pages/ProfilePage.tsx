@@ -333,9 +333,18 @@ function IncomingInvitationsSection() {
   }, []);
 
   const handleAccept = (teamId: string) => {
-    acceptInvitation(teamId);
+    const result = acceptInvitation(teamId);
     setAcceptConfirm(null);
-    toast.success('초대를 수락하여 팀에 합류했습니다!');
+
+    if (result === 'ok') {
+      toast.success('초대를 수락하여 팀에 합류했습니다!');
+    } else if (result === 'already_finalized') {
+      toast.error('이미 해당 대회의 최종 제출을 완료하여 다른 팀에 합류할 수 없습니다.');
+    } else if (result === 'already_in_team') {
+      toast.error('이미 해당 대회의 다른 팀에 소속되어 있어 초대를 수락할 수 없습니다.');
+    } else {
+      toast.error('초대를 수락하는 중 오류가 발생했습니다.');
+    }
   };
 
   const handleReject = (teamId: string) => {
@@ -356,11 +365,16 @@ function IncomingInvitationsSection() {
     >
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <Zap size={16} className="text-yellow-400" />
+          <div 
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.25)' }}
+          >
+            <Zap size={14} className="text-violet-400" />
+          </div>
           <h2 className="text-white" style={{ fontWeight: 700 }}>도착한 초대장</h2>
           <span
-            className="px-2 py-0.5 rounded-full text-xs"
-            style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}
+            className="px-2 py-0.5 rounded-full text-xs font-bold"
+            style={{ background: 'rgba(124,58,237,0.2)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.3)' }}
           >
             {invitations.length}건
           </span>
@@ -489,11 +503,16 @@ function ApplicationHistorySection() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <Send size={16} className="text-violet-400" />
+          <div 
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}
+          >
+            <Send size={14} className="text-yellow-400" />
+          </div>
           <h2 className="text-white" style={{ fontWeight: 700 }}>팀 지원 내역</h2>
           <span
-            className="px-2 py-0.5 rounded-full text-xs"
-            style={{ background: 'rgba(124,58,237,0.2)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.3)' }}
+            className="px-2 py-0.5 rounded-full text-xs font-bold"
+            style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}
           >
             {applications.length}건
           </span>
@@ -1087,7 +1106,7 @@ export function ProfilePage() {
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <Trophy size={15} className="text-yellow-400" />
+                <Trophy size={16} className="text-yellow-400" />
                 <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>수상 내역</h3>
                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
                   {awards.length}건

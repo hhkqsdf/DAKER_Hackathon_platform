@@ -2088,13 +2088,33 @@ export function cancelInvitation(teamId: string, tag: string): void {
   } catch (e) { /* ignore */ }
 }
 
-export function acceptInvitation(teamId: string): void {
+export function acceptInvitation(teamId: string): 'ok' | 'not_found' | 'already_in_team' | 'already_finalized' {
   const { userProfile, teams } = getStorage();
   const team = teams.find(t => t.id === teamId);
-  if (!team) return;
+  if (!team) return 'not_found';
+
+  // 해커톤 별 중복 참가 체크
+  if (team.hackathonSlug) {
+    // 1. 개인 참가자로 이미 최종 제출을 완료했는지 체크
+    const personalData = userProfile.personalData[team.hackathonSlug];
+    if (personalData?.personalSubmission) {
+      return 'already_finalized';
+    }
+
+    // 2. 다른 팀에 이미 소속되어 있는지 체크
+    const existingTeam = teams.find(t => 
+      t.id !== teamId && 
+      t.hackathonSlug === team.hackathonSlug &&
+      t.members.some(m => m.tag === userProfile.tag)
+    );
+
+    if (existingTeam) {
+      return existingTeam.isFinalized ? 'already_finalized' : 'already_in_team';
+    }
+  }
 
   const invitation = team.invitations.find(i => i.tag === userProfile.tag);
-  if (!invitation) return;
+  if (!invitation) return 'not_found';
 
   const newMember: TeamMember = {
     tag: userProfile.tag,
@@ -2114,6 +2134,7 @@ export function acceptInvitation(teamId: string): void {
   });
 
   if (team.hackathonSlug) registerForHackathon(team.hackathonSlug);
+  return 'ok';
 }
 
 export function rejectInvitation(teamId: string): void {

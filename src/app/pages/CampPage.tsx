@@ -1201,14 +1201,26 @@ export function CampPage() {
 
   const handleAcceptInvitation = () => {
     if (!acceptConfirm) return;
-    acceptInvitation(acceptConfirm.teamId);
-    toast.success(`🎉 "${acceptConfirm.teamName}" 팀의 초대를 수락했습니다!`);
-    setAcceptConfirm(null);
-    loadData(); // Refresh list to update status
-    // Redirect to the team dashboard after a short delay
-    setTimeout(() => {
-      navigate(`/teams/${acceptConfirm.teamId}`);
-    }, 1000);
+    const result = acceptInvitation(acceptConfirm.teamId);
+    
+    if (result === 'ok') {
+      toast.success(`🎉 "${acceptConfirm.teamName}" 팀의 초대를 수락했습니다!`);
+      setAcceptConfirm(null);
+      loadData(); // Refresh list to update status
+      // Redirect to the team dashboard after a short delay
+      setTimeout(() => {
+        navigate(`/teams/${acceptConfirm.teamId}`);
+      }, 1000);
+    } else if (result === 'already_finalized') {
+      setAcceptConfirm(null);
+      toast.error('이미 해당 대회의 최종 제출을 완료하여 다른 팀에 합류할 수 없습니다.');
+    } else if (result === 'already_in_team') {
+      setAcceptConfirm(null);
+      toast.error('이미 해당 대회의 다른 팀에 소속되어 있어 초대를 수락할 수 없습니다.');
+    } else {
+      setAcceptConfirm(null);
+      toast.error('초대를 수락하는 중 오류가 발생했습니다.');
+    }
   };
 
   const handleCancelConfirm = () => {
