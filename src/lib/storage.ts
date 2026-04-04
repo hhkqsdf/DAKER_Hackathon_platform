@@ -1576,6 +1576,14 @@ export function submitPersonalProject(slug: string, data: { notes: string; fileU
     submittedAt: new Date().toISOString(),
   };
   updatePersonalData(slug, { personalSubmission: sub });
+
+  // 추가 수정: 개인 최종 제출 시 해당 대회의 모든 팀 지원 내역 자동 취소
+  const apps = getAllUserApplications();
+  apps.forEach(app => {
+    if (app.hackathonSlug === slug && (app.status === 'pending' || app.status === 'accepted')) {
+      cancelApplication(app.teamId);
+    }
+  });
 }
 
 // ─── Team Operations ──────────────────────────────────────────
@@ -1629,12 +1637,33 @@ export function updateTeam(teamId: string, updates: Partial<Team>): void {
   setStorageKey(KEYS.TEAMS, updated);
 }
 
-export function applyToTeam(teamId: string, message: string, selectedRole: string = ''): void {
+export function applyToTeam(teamId: string, message: string, selectedRole: string = ''): 'ok' | 'already_finalized' | 'already_applicant' | 'already_in_team' {
   const { userProfile, teams } = getStorage();
   const team = teams.find(t => t.id === teamId);
-  if (!team) return;
+  if (!team) return 'ok';
 
-  if (team.applicants.some(a => a.tag === userProfile.tag)) return;
+  if (team.hackathonSlug) {
+    // 1. 개인 참가자로 이미 최종 제출을 완료했는지 체크
+    const personalData = userProfile.personalData[team.hackathonSlug];
+    if (personalData?.personalSubmission) {
+      return 'already_finalized';
+    }
+
+    // 2. 이미 해당 대회에 다른 팀의 멤버인지 체크 (나의 팀이 아니면서)
+    const existingTeam = teams.find(t => 
+      t.hackathonSlug === team.hackathonSlug &&
+      t.members.some(m => m.tag === userProfile.tag)
+    );
+
+    if (existingTeam) {
+      return existingTeam.isFinalized ? 'already_finalized' : 'already_in_team';
+    }
+  }
+
+  // 3. 이미 이 팀에 지원했는지 체크
+  if (team.applicants.some(a => a.tag === userProfile.tag)) {
+    return 'already_applicant';
+  }
 
   const applicant: Applicant = {
     tag: userProfile.tag,
@@ -1649,6 +1678,7 @@ export function applyToTeam(teamId: string, message: string, selectedRole: strin
   updateTeam(teamId, { applicants: [...team.applicants, applicant] });
 
   if (team.hackathonSlug) registerForHackathon(team.hackathonSlug);
+  return 'ok';
 }
 
 export function cancelApplication(teamId: string): void {

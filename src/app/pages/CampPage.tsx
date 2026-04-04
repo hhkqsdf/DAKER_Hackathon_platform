@@ -26,6 +26,8 @@ interface TeamWithScore extends Team {
   hackathonStatus: 'ongoing' | 'upcoming' | 'ended' | null;
   isUserRegisteredForHackathon: boolean;
   isInvited: boolean;
+  isHackathonFinalized: boolean;
+  hasPersonalSubmission: boolean;
 }
 
 // src/app/pages/CampPage.tsx 상단 임포트 추가
@@ -105,7 +107,7 @@ function ConfirmModal({
           <Icon size={18} className={`${iconColor} shrink-0 mt-0.5`} />
           <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>{title}</h3>
         </div>
-        <p className="text-sm mb-5 ml-7" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>{message}</p>
+        <p className="text-sm mb-5 ml-7" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
@@ -128,6 +130,8 @@ function ConfirmModal({
               boxShadow: danger
                 ? '0 4px 14px rgba(220,38,38,0.35)'
                 : '0 4px 14px rgba(124,58,237,0.35)',
+              whiteSpace: 'pre-line',
+              lineHeight: 1.2, // ✅ 2줄일 때 더 균형있게 보임
             }}
           >
             {confirmLabel}
@@ -152,6 +156,7 @@ function ApplicationModal({
   const [sending, setSending] = useState(false);
   const [switchTarget, setSwitchTarget] = useState<Team | null>(null);
   const [showLeaderDetail, setShowLeaderDetail] = useState(false);
+  const [showConfirmApply, setShowConfirmApply] = useState(false);
 
   // 팀장 정보 계산
   const masterMember = team.members.find(m => m.tag === team.master);
@@ -166,10 +171,22 @@ function ApplicationModal({
     if (existingToCancel) {
       cancelApplication(existingToCancel.id);
     }
-    applyToTeam(team.id, message.trim(), selectedRole);
-    toast.success(`✅ "${team.teamName}" 팀에 지원 완료!`);
-    setSending(false);
-    onClose();
+    const result = applyToTeam(team.id, message.trim(), selectedRole);
+    
+    if (result === 'ok') {
+      toast.success(`✅ "${team.teamName}" 팀에 지원 완료!`);
+      setSending(false);
+      onClose();
+    } else if (result === 'already_finalized') {
+      toast.error('이미 해당 대회의 최종 제출을 완료했습니다.');
+      setSending(false);
+    } else if (result === 'already_in_team') {
+      toast.error('이미 해당 대회의 다른 팀에 소속되어 있습니다.');
+      setSending(false);
+    } else {
+      toast.error('지원 처리 중 오류가 발생했습니다.');
+      setSending(false);
+    }
   };
 
   const handleApply = async () => {
@@ -189,7 +206,7 @@ function ApplicationModal({
         return;
       }
     }
-    await doApply();
+    setShowConfirmApply(true);
   };
 
   return (
@@ -446,13 +463,30 @@ function ApplicationModal({
         </motion.div>
       </motion.div>
 
-      {/* Switch Team Confirm (z-index above modal) */}
+      {/* Confirmation Modal */}
       <AnimatePresence>
+        {showConfirmApply && (
+          <ConfirmModal
+            key="confirm-apply"
+            variant="info"
+            title="지원 확인"
+            message={`"${team.teamName}" 팀에 지원을 보내시겠습니까?`}
+            confirmLabel="지원하기"
+            onConfirm={() => {
+              setShowConfirmApply(false);
+              doApply();
+            }}
+            onCancel={() => setShowConfirmApply(false)}
+            zIndex={70}
+          />
+        )}
         {switchTarget && (
           <ConfirmModal
-            title="기존 지원 취소 후 재지원"
-            message={`이미 이 대회에서 "${switchTarget.teamName}" 팀에 지원 중입니다.\n기존 지원을 취소하고 "${team.teamName}" 팀에 새로 지원하시겠습니까?`}
-            confirmLabel="지원 변경하기"
+            key="switch-modal"
+            variant="warning"
+            title="지원 팀 변경"
+            message={`이미 "${switchTarget.teamName}" 팀에 지원한 상태입니다. 기존 지원을 취소하고 이 팀에 새로 지원하시겠습니까?`}
+            confirmLabel={`기존 지원 취소 후\n새로 지원`}
             onConfirm={() => {
               const existing = switchTarget;
               setSwitchTarget(null);
@@ -835,7 +869,8 @@ function TeamCard({
   const hackathon = hackathons.find(h => h.slug === team.hackathonSlug);
   const isMyTeam = team.isMine;
   const hasApplied = team.hasApplied;
-  const blocked = !isMyTeam && team.hasTeamInHackathon;
+  const blocked = !isMyTeam && (team.hasTeamInHackathon || team.hasPersonalSubmission);
+  const isFinalized = team.isHackathonFinalized || team.hasPersonalSubmission;
 
   return (
     <motion.div
@@ -901,12 +936,12 @@ function TeamCard({
           <span
             className="px-2.5 py-0.5 rounded-full text-xs"
             style={{
-              background: team.isOpen ? 'rgba(52,211,153,0.15)' : 'rgba(100,116,139,0.15)',
-              color: team.isOpen ? '#34d399' : '#94a3b8',
-              border: `1px solid ${team.isOpen ? 'rgba(52,211,153,0.3)' : 'rgba(100,116,139,0.3)'}`,
+              background: (team.isOpen && !team.isFinalized && !team.isTeamLocked) ? 'rgba(52,211,153,0.15)' : 'rgba(100,116,139,0.15)',
+              color: (team.isOpen && !team.isFinalized && !team.isTeamLocked) ? '#34d399' : '#94a3b8',
+              border: `1px solid ${(team.isOpen && !team.isFinalized && !team.isTeamLocked) ? 'rgba(52,211,153,0.3)' : 'rgba(100,116,139,0.3)'}`,
             }}
           >
-            {team.isOpen ? '모집 중' : '마감'}
+            {(team.isOpen && !team.isFinalized && !team.isTeamLocked) ? '모집 중' : '마감'}
           </span>
           {/* Favorite star button — 모집중/마감 오른쪽 */}
           <button
@@ -926,7 +961,17 @@ function TeamCard({
       </div>
 
       {/* Intro */}
-      <p className="text-xs mb-3 leading-relaxed line-clamp-2 flex-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+      <p 
+        className="text-xs mb-3 leading-relaxed flex-1" 
+        style={{ 
+          color: 'rgba(255,255,255,0.55)',
+          display: '-webkit-box',
+          WebkitLineClamp: 3, // ✅ 최대 3줄로 설정
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
         {team.intro}
       </p>
 
@@ -1017,11 +1062,15 @@ function TeamCard({
                     }}
                   >
                     <Lock size={10} className="shrink-0" />
-                    <span className="truncate">해당 대회에 이미 팀이 있습니다.</span>
+                    <span className="truncate">
+                      {isFinalized ? '최종 제출 완료' : '해당 대회에 이미 팀이 있습니다.'}
+                    </span>
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="bg-[#1a1a2e] border-violet-500/30 text-white text-xs p-2 shadow-xl">
-                  이미 이 해커톤에 소속된 팀이 있어 추가 지원이 불가능합니다.
+                  {isFinalized 
+                    ? '이미 최종 제출(팀 또는 개인)을 완료하여 추가 참가가 불가능합니다.'
+                    : '이미 이 해커톤에 소속된 팀이 있어 추가 지원이 불가능합니다.'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1109,6 +1158,11 @@ export function CampPage() {
         .filter(t => t.hackathonSlug && t.members.some(m => m.tag === data.userProfile.tag))
         .map(t => t.hackathonSlug!)
     );
+    const finalizedHackathons = new Set(
+      data.teams
+        .filter(t => t.hackathonSlug && t.isFinalized && t.members.some(m => m.tag === data.userProfile.tag))
+        .map(t => t.hackathonSlug!)
+    );
 
     const scored: TeamWithScore[] = data.teams
       .map(t => ({
@@ -1117,17 +1171,36 @@ export function CampPage() {
         isMine: t.members.some(m => m.tag === data.userProfile.tag),
         hasApplied: appliedIds.includes(t.id),
         hasTeamInHackathon: !!(t.hackathonSlug && myTeamHackathons.has(t.hackathonSlug) && !t.members.some(m => m.tag === data.userProfile.tag)),
+        isHackathonFinalized: !!(t.hackathonSlug && finalizedHackathons.has(t.hackathonSlug)),
+        hasPersonalSubmission: !!(t.hackathonSlug && data.userProfile.personalData[t.hackathonSlug]?.personalSubmission),
         hackathonStatus: t.hackathonSlug ? data.hackathons.find(h => h.slug === t.hackathonSlug)?.status || null : null,
         isUserRegisteredForHackathon: t.hackathonSlug ? data.userProfile.joinedHackathons.includes(t.hackathonSlug) : false,
         isInvited: t.invitations.some(inv => inv.tag === data.userProfile.tag && inv.status === 'pending'),
       }))
       .sort((a, b) => {
         const getPriority = (t: TeamWithScore) => {
+          // 0: 내 팀 (상단 고정)
           if (t.isMine) return 0;
-          if (t.hasApplied) return 1;
-          if (!t.hasTeamInHackathon && t.isOpen) return 2;
-          if (t.hasTeamInHackathon) return 3;
-          return 4;
+          
+          const isUserFinalized = t.isHackathonFinalized || t.hasPersonalSubmission;
+          
+          // 사용자가 이미 이 대회 참여를 확정했거나 다른 팀이 있는 경우 하단으로 배치
+          // (내 팀이 아닐 때만 해당 hackathonSlug 관련 팀들을 뒤로 보냄)
+          if (isUserFinalized || t.hasTeamInHackathon) return 5;
+
+          // 1: 초대 받은 팀 (참가 가능한 상태에서만 상단)
+          if (t.isInvited) return 1;
+          
+          // 2: 지원한 팀 (참가 가능한 상태에서만 상단)
+          if (t.hasApplied) return 2;
+          
+          const isJoinable = !t.hasTeamInHackathon && !t.hasPersonalSubmission && (t.isOpen && !t.isFinalized);
+          
+          // 3: 지원하기 (매칭률 순)
+          if (isJoinable) return 3;
+          
+          // 6: 마감 / 팀 확정 (팀 자체가 이미 끝난 경우)
+          return 6;
         };
         const pa = getPriority(a);
         const pb = getPriority(b);

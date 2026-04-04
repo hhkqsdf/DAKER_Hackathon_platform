@@ -19,6 +19,7 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } fro
 import { calculateXP, getTierFromXP, TIERS, getUserAwards, getUserTotalHackathonCount, RANK_LABELS } from '../../lib/tier';
 import { TierBadge, TierIcon } from '../components/TierIcon';
 
+
 // ─── TechStackEditor ──────────────────────────────────────────
 
 function TechStackEditor({
@@ -353,8 +354,6 @@ function IncomingInvitationsSection() {
     toast.success('초대를 거절했습니다.');
   };
 
-  if (invitations.length === 0) return null;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -382,8 +381,14 @@ function IncomingInvitationsSection() {
       </div>
 
       <div className="space-y-3">
-        <AnimatePresence>
-          {invitations.map((inv, i) => {
+        {invitations.length === 0 ? (
+          <div className="text-center py-8 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(124,58,237,0.1)' }}>
+            <Zap size={24} className="mx-auto mb-2 text-violet-400 opacity-20" />
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>아직 도착한 초대장이 없습니다.</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {invitations.map((inv, i) => {
             const hackathonTitle = inv.hackathonSlug ? hackathonMap[inv.hackathonSlug] : null;
 
             return (
@@ -439,6 +444,7 @@ function IncomingInvitationsSection() {
             );
           })}
         </AnimatePresence>
+        )}
       </div>
 
       <AnimatePresence>
@@ -461,33 +467,24 @@ function IncomingInvitationsSection() {
   );
 }
 
-function ApplicationHistorySection() {
-  const [applications, setApplications] = useState<UserApplicationRecord[]>([]);
+function ApplicationHistorySection({ applications, loadData }: { applications: UserApplicationRecord[], loadData: () => void }) {
   const [hackathonMap, setHackathonMap] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<{ teamId: string; teamName: string } | null>(null);
 
-  const loadData = () => {
+  useEffect(() => {
     const { hackathons } = getStorage();
     const map: Record<string, string> = {};
     hackathons.forEach(h => { map[h.slug] = h.title; });
     setHackathonMap(map);
-    setApplications(getAllUserApplications());
-  };
-
-  useEffect(() => {
-    loadData();
-    window.addEventListener('storage', loadData);
-    return () => window.removeEventListener('storage', loadData);
   }, []);
 
   const handleCancel = (teamId: string) => {
     cancelApplication(teamId);
     setCancelConfirm(null);
     toast.success('지원이 취소되었습니다.');
+    loadData(); // 부모 상태 리프레시
   };
-
-  if (applications.length === 0) return null;
 
   const pendingCount = applications.filter(a => a.status === 'pending').length;
   const acceptedCount = applications.filter(a => a.status === 'accepted').length;
@@ -517,7 +514,6 @@ function ApplicationHistorySection() {
             {applications.length}건
           </span>
         </div>
-        {/* Summary badges */}
         <div className="flex items-center gap-2">
           {pendingCount > 0 && (
             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs"
@@ -536,169 +532,106 @@ function ApplicationHistorySection() {
         </div>
       </div>
 
-      {/* Application List */}
       <div className="space-y-3">
-        <AnimatePresence>
-          {applications.map((app, i) => {
-            const cfg = APP_STATUS_CONFIG[app.status];
-            const StatusIcon = cfg.icon;
-            const isExpanded = expandedId === app.teamId;
-            const hackathonTitle = app.hackathonSlug ? hackathonMap[app.hackathonSlug] : null;
-            const isConfirmingCancel = cancelConfirm?.teamId === app.teamId;
+        {applications.length === 0 ? (
+          <div className="text-center py-8 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+            <Send size={24} className="mx-auto mb-2 text-white opacity-20" />
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>아직 지원한 팀이 없습니다.</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {applications.map((app, i) => {
+              const cfg = APP_STATUS_CONFIG[app.status];
+              const StatusIcon = cfg.icon;
+              const isExpanded = expandedId === app.teamId;
+              const hackathonTitle = app.hackathonSlug ? hackathonMap[app.hackathonSlug] : null;
 
-            return (
-              <motion.div
-                key={app.teamId}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ delay: i * 0.04 }}
-                className="rounded-xl overflow-hidden"
-                style={{ border: `1px solid ${cfg.border}`, background: cfg.bg }}
-              >
-                {/* Main Row */}
-                <div className="flex items-center gap-3 p-4">
-                  {/* Status Icon */}
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(0,0,0,0.2)' }}
-                  >
-                    <StatusIcon size={16} style={{ color: cfg.color }} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-white text-sm truncate" style={{ fontWeight: 700 }}>
-                        {app.teamName}
-                      </span>
-                      <span
-                        className="px-2 py-0.5 rounded-full text-xs shrink-0"
-                        style={{ background: 'rgba(0,0,0,0.25)', color: cfg.color }}
-                      >
-                        {cfg.label}
-                      </span>
+              return (
+                <motion.div
+                  key={app.teamId}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="rounded-xl overflow-hidden"
+                  style={{ border: `1px solid ${cfg.border}`, background: cfg.bg }}
+                >
+                  <div className="flex items-center gap-3 p-4">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                      <StatusIcon size={16} style={{ color: cfg.color }} />
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {app.selectedRole && (
-                        <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                          <Briefcase size={10} />
-                          {app.selectedRole}
-                        </span>
-                      )}
-                      {hackathonTitle && (
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                          · {hackathonTitle}
-                        </span>
-                      )}
-                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        · {new Date(app.appliedAt).toLocaleDateString('ko-KR')}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-white text-sm truncate" style={{ fontWeight: 700 }}>{app.teamName}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs shrink-0" style={{ background: 'rgba(0,0,0,0.25)', color: cfg.color }}>{cfg.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {app.selectedRole && (
+                          <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                            <Briefcase size={10} /> {app.selectedRole}
+                          </span>
+                        )}
+                        {hackathonTitle && <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>· {hackathonTitle}</span>}
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>· {new Date(app.appliedAt).toLocaleDateString('ko-KR')}</span>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Expand message */}
-                    {app.message && (
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : app.teamId)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
-                        style={{
-                          background: isExpanded ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.07)',
-                          color: isExpanded ? '#a78bfa' : 'rgba(255,255,255,0.5)',
-                          border: `1px solid ${isExpanded ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                        }}
-                      >
-                        <MessageSquare size={11} />
-                        메시지
-                      </button>
-                    )}
-                    {/* Team dashboard (if accepted) */}
-                    {app.status === 'accepted' && (
-                      <Link
-                        to={`/teams/${app.teamId}`}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
-                        style={{
-                          background: 'rgba(52,211,153,0.2)',
-                          color: '#34d399',
-                          border: '1px solid rgba(52,211,153,0.3)',
-                        }}
-                      >
-                        <ChevronRight size={11} />
-                        팀 이동
-                      </Link>
-                    )}
-                    {/* Cancel (if pending) */}
-                    {app.status === 'pending' && (
-                      <button
-                        onClick={() => setCancelConfirm({ teamId: app.teamId, teamName: app.teamName })}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.06)',
-                          color: 'rgba(255,255,255,0.45)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                      >
-                        <XCircle size={11} />
-                        취소
-                      </button>
-                    )}
-                    {/* Confirm cancel */}
-                    {isConfirmingCancel && (
-                      <button
-                        onClick={() => handleCancel(app.teamId)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
-                        style={{
-                          background: 'rgba(239,68,68,0.25)',
-                          color: '#f87171',
-                          border: '1px solid rgba(239,68,68,0.5)',
-                        }}
-                      >
-                        확인
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded: Message */}
-                <AnimatePresence>
-                  {isExpanded && app.message && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div
-                        className="px-4 pb-4 pt-0"
-                        style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-                      >
-                        <p className="text-xs mb-1 pt-3" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                          보낸 메시지
-                        </p>
-                        <p
-                          className="text-sm leading-relaxed p-3 rounded-xl"
+                    <div className="flex items-center gap-2 shrink-0">
+                      {app.message && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : app.teamId)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs"
                           style={{
-                            color: 'rgba(255,255,255,0.7)',
-                            background: 'rgba(0,0,0,0.2)',
-                            border: '1px solid rgba(255,255,255,0.07)',
+                            background: isExpanded ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.07)',
+                            color: isExpanded ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+                            border: `1px solid ${isExpanded ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.1)'}`,
                           }}
                         >
-                          {app.message}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                          <MessageSquare size={11} /> 메시지
+                        </button>
+                      )}
+                      {app.status === 'accepted' && (
+                        <Link to={`/teams/${app.teamId}`} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs"
+                          style={{ background: 'rgba(52,211,153,0.2)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }}>
+                          <ChevronRight size={11} /> 팀 이동
+                        </Link>
+                      )}
+                      {app.status === 'pending' && (
+                        <button
+                          onClick={() => setCancelConfirm({ teamId: app.teamId, teamName: app.teamName })}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}
+                        >
+                          <XCircle size={11} /> 취소
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isExpanded && app.message && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div className="px-4 pb-4 pt-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                          <p className="text-xs mb-1 pt-3" style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>보낸 메시지</p>
+                          <p className="text-sm leading-relaxed p-3 rounded-xl" style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                            {app.message}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
       </div>
 
-      {/* Cancel Confirm Modal */}
       <AnimatePresence>
         {cancelConfirm && (
           <CancelConfirmModal
@@ -721,15 +654,18 @@ export function ProfilePage() {
   const [draft, setDraft] = useState<UserProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [showTierModal, setShowTierModal] = useState(false);
+  const [applications, setApplications] = useState<UserApplicationRecord[]>([]);
+
+  const loadAllData = () => {
+    const data = getStorage();
+    setProfile(data.userProfile);
+    setApplications(getAllUserApplications());
+  };
 
   useEffect(() => {
-    const load = () => {
-      const { userProfile } = getStorage();
-      setProfile(userProfile);
-    };
-    load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    loadAllData();
+    window.addEventListener('storage', loadAllData);
+    return () => window.removeEventListener('storage', loadAllData);
   }, []);
 
   const startEdit = () => {
@@ -958,6 +894,9 @@ export function ProfilePage() {
                 {joinedHackathons.map(h => {
                   const status = STATUS_CONFIG[h.status];
                   const myTeam = getUserTeamForHackathon(h.slug);
+                  const myApps = applications.filter(a => a.hackathonSlug === h.slug && a.status === 'pending');
+                  const primaryApp = myApps[0];
+
                   return (
                     <div
                       key={h.slug}
@@ -969,10 +908,10 @@ export function ProfilePage() {
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.text}`}>{status.label}</span>
                           <span className="text-xs px-2 py-0.5 rounded-full" style={{
-                            background: myTeam ? 'rgba(52,211,153,0.15)' : 'rgba(251,191,36,0.15)',
-                            color: myTeam ? '#34d399' : '#fbbf24',
+                            background: myTeam ? 'rgba(52,211,153,0.15)' : primaryApp ? 'rgba(124,58,237,0.15)' : 'rgba(251,191,36,0.15)',
+                            color: myTeam ? '#34d399' : primaryApp ? '#a78bfa' : '#fbbf24',
                           }}>
-                            {myTeam ? `팀: ${myTeam.teamName}` : 'Free Agent'}
+                            {myTeam ? `팀: ${myTeam.teamName}` : primaryApp ? `지원 중: ${primaryApp.teamName}` : 'Free Agent'}
                           </span>
                         </div>
                       </div>
@@ -998,7 +937,7 @@ export function ProfilePage() {
           <IncomingInvitationsSection />
 
           {/* Application History */}
-          <ApplicationHistorySection />
+          <ApplicationHistorySection applications={applications} loadData={loadAllData} />
         </div>
 
         {/* Right: Radar Chart & Stats */}
