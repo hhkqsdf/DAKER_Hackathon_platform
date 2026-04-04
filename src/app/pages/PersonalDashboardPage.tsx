@@ -427,15 +427,15 @@ export function PersonalDashboardPage() {
               style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.2)', color: '#a78bfa' }}>
               프로젝트 제출<ChevronRight size={14} />
             </Link>
+            <Link to={`/camp?hackathon=${slug}&create=true`}
+              className="flex items-center justify-between p-3 rounded-xl transition-all text-sm"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)' }}>
+              팀 만들기<ChevronRight size={14} />
+            </Link>
             <Link to={`/camp?hackathon=${slug}`}
               className="flex items-center justify-between p-3 rounded-xl transition-all text-sm"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)' }}>
               팀 찾기<ChevronRight size={14} />
-            </Link>
-            <Link to={`/hackathons/${slug}`}
-              className="flex items-center justify-between p-3 rounded-xl transition-all text-sm"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)' }}>
-              대회 정보<ChevronRight size={14} />
             </Link>
           </motion.div>
         </div>

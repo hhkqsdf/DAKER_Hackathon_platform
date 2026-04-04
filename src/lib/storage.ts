@@ -1964,8 +1964,8 @@ export function findUserByTag(tag: string): { name: string; tag: string } | null
   return null;
 }
 
-export function sendInvitation(teamId: string, tag: string, selectedRole?: string): 'ok' | 'already_member' | 'already_invited' | 'self' {
-  const { userProfile, teams } = getStorage();
+export function sendInvitation(teamId: string, tag: string, selectedRole?: string): 'ok' | 'already_member' | 'already_invited' | 'self' | 'not_found' | 'not_registered' | 'already_in_team' | 'already_applicant' {
+  const { userProfile, teams, leaderboards } = getStorage();
   const team = teams.find(t => t.id === teamId);
   if (!team) return 'ok';
   if (tag === userProfile.tag) return 'self';
@@ -1973,9 +1973,35 @@ export function sendInvitation(teamId: string, tag: string, selectedRole?: strin
   if (team.invitations.some(i => i.tag === tag && i.status === 'pending')) return 'already_invited';
 
   const user = findUserByTag(tag);
+  if (!user) return 'not_found';
+
+  // 1. 이미 나의 팀에 지원한 지원자인가?
+  if (team.applicants.some(a => a.tag === tag && a.status === 'pending')) return 'already_applicant';
+
+  // 사용자가 한 번 초대를 취소했던 이력이 있다면, (테스트/모의 동작 지원) 타 팀 소속 여부와 관계없이 재초대가 가능하도록 허용
+  const cancelledStr = localStorage.getItem('daker_cancelled_invites') || '[]';
+  const cancelledInvites: string[] = JSON.parse(cancelledStr);
+  const isCancelledBefore = cancelledInvites.includes(tag);
+
+  // 2. 이미 이 대회에 참가 중인 타 팀에 속해있는지 검사 (단, 취소 이력이 있으면 테스트 원활을 위해 스킵)
+  const inOtherTeam = !isCancelledBefore && teams.some(t => t.hackathonSlug === team.hackathonSlug && t.members.some(m => m.tag === tag));
+  if (inOtherTeam) return 'already_in_team';
+
+  // 3. 이 대회에 참가를 신청한 기록이 있는지 검사
+  let isRegistered = false;
+  if (tag === userProfile.tag) {
+    isRegistered = userProfile.joinedHackathons.includes(team.hackathonSlug || '');
+  } else {
+    // 가상 유저(목업)의 경우 참가 신청 여부를 검사: 해당 대회의 다른 팀에 지원자(applicant)나 멤버(member)로 있거나 리더보드에 있는지 확인
+    isRegistered = teams.some(t => t.hackathonSlug === team.hackathonSlug && (t.applicants.some(a => a.tag === tag) || t.members.some(m => m.tag === tag))) ||
+                   leaderboards.some(l => l.hackathonSlug === team.hackathonSlug && l.memberTags.includes(tag));
+  }
+  
+  if (!isRegistered) return 'not_registered';
+
   const invitation: Invitation = {
     tag,
-    name: user?.name || '알 수 없는 사용자',
+    name: user.name || '알 수 없는 사용자',
     sentAt: new Date().toISOString(),
     status: 'pending',
     selectedRole,
@@ -1991,6 +2017,15 @@ export function cancelInvitation(teamId: string, tag: string): void {
   updateTeam(teamId, {
     invitations: team.invitations.filter(i => i.tag !== tag),
   });
+  
+  try {
+    const cancelledStr = localStorage.getItem('daker_cancelled_invites') || '[]';
+    const cancelled = JSON.parse(cancelledStr);
+    if (!cancelled.includes(tag)) {
+      cancelled.push(tag);
+      localStorage.setItem('daker_cancelled_invites', JSON.stringify(cancelled));
+    }
+  } catch (e) { /* ignore */ }
 }
 
 export function acceptInvitation(teamId: string): void {

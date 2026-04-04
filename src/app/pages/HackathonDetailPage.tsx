@@ -813,10 +813,10 @@ function SubmitTab({
               <div className="w-16 h-16 rounded-2xl bg-violet-500/20 flex items-center justify-center mx-auto mb-5 border border-violet-500/30">
                 <AlertTriangle size={32} className="text-violet-400" />
               </div>
-              <h3 className="text-white text-xl font-bold mb-3">정말 제출하시겠습니까?</h3>
+              <h3 className="text-white text-xl font-bold mb-3">최종 제출 재확인</h3>
               <p className="text-white/50 text-sm leading-relaxed mb-8 whitespace-nowrap">
-                최종 제출 후에는 <span className="text-violet-400 font-bold">팀 구성(멤버) 수정이 불가능</span>합니다.<br />
-                이대로 프로젝트를 최종 제출할까요?
+                <span className="text-violet-400 font-bold">최종 제출을 하면 팀 수정이 더 이상 불가능합니다.</span><br />
+                정말 제출하시겠습니까?
               </p>
               <div className="flex flex-col gap-3">
                 <button onClick={handleConfirmedSubmit} className="w-full py-4 rounded-2xl text-white font-bold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-xl shadow-violet-900/20 active:scale-95 transition-transform">

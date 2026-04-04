@@ -22,9 +22,9 @@ import { TierBadge } from '../components/TierIcon';
 
 // ─── Todo Status Config ───────────────────────────────────────
 const TODO_STATUS = {
-  todo:       { label: '예정',    color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)' },
-  inprogress: { label: '진행 중', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  border: 'rgba(251,191,36,0.3)'  },
-  done:       { label: '완료',    color: '#34d399', bg: 'rgba(52,211,153,0.12)',  border: 'rgba(52,211,153,0.3)'  },
+  todo: { label: '예정', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)' },
+  inprogress: { label: '진행 중', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+  done: { label: '완료', color: '#34d399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)' },
 };
 
 // ─── Quick Memo ───────────────────────────────────────────────
@@ -158,7 +158,7 @@ function MemberTasks({ team, userProfile }: { team: Team; userProfile: UserProfi
                 <div className="flex items-center gap-2 shrink-0">
                   {todos.length > 0 && (
                     <div className="flex gap-1">
-                      {(['todo','inprogress','done'] as MemberTodo['status'][]).map(s => {
+                      {(['todo', 'inprogress', 'done'] as MemberTodo['status'][]).map(s => {
                         const count = todos.filter(t => t.status === s).length;
                         if (count === 0) return null;
                         return (
@@ -497,6 +497,10 @@ function InviteModal({ team, onClose }: { team: Team; onClose: () => void }) {
     if (result === 'already_member') { toast.error('이미 팀에 있는 멤버예요.'); return; }
     if (result === 'already_invited') { toast.error('이미 초대한 사용자예요.'); return; }
     if (result === 'self') { toast.error('본인은 초대할 수 없어요.'); return; }
+    if (result === 'not_found') { toast.error('존재하지 않는 유저 태그입니다.'); return; }
+    if (result === 'not_registered') { toast.error('해당 대회에 참가 신청을 하지 않은 유저입니다.'); return; }
+    if (result === 'already_applicant') { toast.error('이미 나의 팀에 지원해서 대기 중인 지원자입니다.'); return; }
+    if (result === 'already_in_team') { toast.error('이미 이 대회의 다른 팀에 소속된 유저입니다.'); return; }
 
     toast.success(`📩 ${tag}에게 초대를 보냈어요!`);
     setTagInput('');
@@ -688,6 +692,7 @@ export function TeamDashboardPage() {
   const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferConfirmTarget, setTransferConfirmTarget] = useState<string | null>(null);
   const [detailApp, setDetailApp] = useState<Applicant | null>(null);
 
   useEffect(() => {
@@ -719,7 +724,7 @@ export function TeamDashboardPage() {
   }
 
   const isMaster = team.master === userProfile.tag;
-  const isLocked = team.isTeamLocked ?? false;
+  const isLocked = (team.isTeamLocked ?? false) || !!team.submission;
   const pendingApps = team.applicants.filter(a => a.status === 'pending').length;
   const pendingInvites = team.invitations.filter(i => i.status === 'pending').length;
 
@@ -845,7 +850,7 @@ export function TeamDashboardPage() {
                   {/* 팀원 초대 — 팀 확정과 팀 떠나기 사이 */}
                   {isMaster && (
                     isLocked ? (
-                      team.isFinalized ? (
+                      team.isFinalized || !!team.submission ? (
                         <button
                           disabled
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
@@ -883,11 +888,13 @@ export function TeamDashboardPage() {
                       <UserPlus size={14} />팀원 초대
                     </button>
                   )}
-                  <button onClick={() => setShowLeaveConfirm(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
-                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                    <LogOut size={14} />팀 떠나기
-                  </button>
+                  {!isLocked && (
+                    <button onClick={() => setShowLeaveConfirm(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
+                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                      <LogOut size={14} />팀 떠나기
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -1047,7 +1054,7 @@ export function TeamDashboardPage() {
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}>안 떠나가기</button>
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}>취소</button>
                     <button
                       onClick={() => { setShowLeaveConfirm(false); setShowTransferModal(true); }}
                       className="flex-1 py-2.5 rounded-xl text-sm text-white flex items-center justify-center gap-2"
@@ -1077,7 +1084,7 @@ export function TeamDashboardPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setShowTransferModal(false); }}>
+            onClick={e => { if (e.target === e.currentTarget) { setShowTransferModal(false); setTransferConfirmTarget(null); } }}>
             <motion.div initial={{ scale: 0.92, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 12 }}
               className="w-full max-w-sm rounded-2xl overflow-hidden"
               style={{ background: '#0d0d1f', border: '1px solid rgba(251,191,36,0.3)' }}
@@ -1095,54 +1102,74 @@ export function TeamDashboardPage() {
                       <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>위임할 팀원을 선택해주세요</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowTransferModal(false)} style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  <button onClick={() => { setShowTransferModal(false); setTransferConfirmTarget(null); }} style={{ color: 'rgba(255,255,255,0.4)' }}>
                     <X size={18} />
                   </button>
                 </div>
               </div>
-              {/* Member List */}
-              <div className="px-6 py-4 space-y-2">
-                {team.members
-                  .filter(m => m.tag !== userProfile.tag)
-                  .map(member => (
-                    <button
-                      key={member.tag}
-                      onClick={() => handleTransferMaster(member.tag)}
-                      className="w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all group"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(251,191,36,0.1)';
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(251,191,36,0.35)';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-                      }}
-                    >
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm shrink-0"
-                        style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', fontWeight: 700, fontSize: '15px' }}>
-                        {member.name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white" style={{ fontWeight: 600 }}>{member.name}</p>
-                        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{member.tag} · {member.role}</p>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', fontSize: '12px', fontWeight: 600 }}>
-                        <Crown size={11} />
-                        위임
-                      </div>
-                    </button>
-                  ))}
-              </div>
-              {/* Warning */}
-              <div className="px-6 pb-5">
-                <div className="p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)', lineHeight: 1.6 }}>
-                    ⚠️ 팀장 위임 후에는 되돌릴 수 없습니다. 신중하게 선택해주세요.
+              {transferConfirmTarget ? (
+                <div className="px-6 py-8 text-center">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}>
+                    <Crown size={20} className="text-yellow-400" />
+                  </div>
+                  <p className="text-white text-sm mb-6 leading-relaxed">
+                    해당 팀원에게 <span className="text-yellow-400 font-bold">팀장 권한을 위임</span>합니다.<br />
+                    정말 진행하시겠습니까? (되돌릴 수 없습니다)
                   </p>
+                  <div className="flex gap-3">
+                    <button onClick={() => setTransferConfirmTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm transition-all" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}>취소</button>
+                    <button onClick={() => { handleTransferMaster(transferConfirmTarget); setTransferConfirmTarget(null); }} className="flex-1 py-2.5 rounded-xl text-sm text-white flex items-center justify-center gap-2 transition-all hover:scale-95" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
+                      <Crown size={14} />위임하기
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Member List */}
+                  <div className="px-6 py-4 space-y-2">
+                    {team.members
+                      .filter(m => m.tag !== userProfile.tag)
+                      .map(member => (
+                        <button
+                          key={member.tag}
+                          onClick={() => setTransferConfirmTarget(member.tag)}
+                          className="w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all group"
+                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(251,191,36,0.1)';
+                            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(251,191,36,0.35)';
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+                            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+                          }}
+                        >
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm shrink-0"
+                            style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', fontWeight: 700, fontSize: '15px' }}>
+                            {member.name[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white" style={{ fontWeight: 600 }}>{member.name}</p>
+                            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{member.tag} · {member.role}</p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', fontSize: '12px', fontWeight: 600 }}>
+                            <Crown size={11} />
+                            위임
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                  {/* Warning */}
+                  <div className="px-6 pb-5">
+                    <div className="p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)', lineHeight: 1.6 }}>
+                        ⚠️ 팀장 위임 후에는 되돌릴 수 없습니다. 신중하게 선택해주세요.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

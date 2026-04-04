@@ -1,11 +1,16 @@
 import { Trophy, Medal, TrendingUp, Users, Calendar, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getStorage, getGlobalRankings, GlobalRankingEntry, LeaderboardEntry, Hackathon } from '../../lib/storage';
-import { RANKING_PERIOD_OPTIONS } from '../../lib/constants';
+import { calculateXP, getTierFromXP, TierInfo, TIERS } from '../../lib/tier';
 import { Link } from 'react-router';
 
-function PodiumCard({ entry, rank }: { entry: GlobalRankingEntry; rank: number }) {
+type EnrichedRankingEntry = GlobalRankingEntry & {
+  xp: number;
+  tierInfo: TierInfo;
+};
+
+function PodiumCard({ entry, rank, period }: { entry: EnrichedRankingEntry; rank: number; period: 'hackathon' | 'tier' }) {
   const heights = [120, 90, 70];
   const colors = ['#fbbf24', '#94a3b8', '#d97706'];
   const emojis = ['🥇', '🥈', '🥉'];
@@ -33,7 +38,9 @@ function PodiumCard({ entry, rank }: { entry: GlobalRankingEntry; rank: number }
         {entry.name}
       </div>
       <div className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>{entry.tag}</div>
-      <div className="text-sm mb-3" style={{ color, fontWeight: 800 }}>{entry.totalScore}pt</div>
+      <div className="text-sm mb-3" style={{ color, fontWeight: 800 }}>
+        {period === 'tier' ? `${entry.xp} XP` : `${entry.totalScore}pt`}
+      </div>
       <div
         className="w-24 rounded-t-xl flex items-end justify-center pb-2"
         style={{ height: h, background: `linear-gradient(to top, ${color}20, ${color}08)`, border: `1px solid ${color}20` }}
@@ -45,12 +52,11 @@ function PodiumCard({ entry, rank }: { entry: GlobalRankingEntry; rank: number }
 }
 
 export function RankingsPage() {
-  const [rankings, setRankings] = useState<GlobalRankingEntry[]>([]);
+  const [baseRankings, setBaseRankings] = useState<EnrichedRankingEntry[]>([]);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [leaderboards, setLeaderboards] = useState<LeaderboardEntry[]>([]);
-  const [period, setPeriod] = useState('all');
   const [userTag, setUserTag] = useState('');
-  const [activeView, setActiveView] = useState<'global' | 'hackathon'>('global');
+  const [activeView, setActiveView] = useState<'hackathon_global' | 'tier_global' | 'hackathon_local'>('hackathon_global');
   const [selectedHackathon, setSelectedHackathon] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -58,7 +64,17 @@ export function RankingsPage() {
   useEffect(() => {
     const load = () => {
       const data = getStorage();
-      setRankings(getGlobalRankings());
+      const rawRankings = getGlobalRankings();
+      const xpRankings = rawRankings.map(r => {
+        const xpData = calculateXP(r.tag);
+        return {
+          ...r,
+          xp: xpData.total,
+          tierInfo: getTierFromXP(xpData.total),
+        };
+      });
+
+      setBaseRankings(xpRankings);
       setHackathons(data.hackathons);
       setLeaderboards(data.leaderboards);
       setUserTag(data.userProfile.tag);
@@ -79,19 +95,19 @@ export function RankingsPage() {
   // 선택된 연도에 해당하는 월 목록 (오름차순)
   const months = selectedYear
     ? Array.from(
-        new Set(
-          endedHackathons
-            .filter(h => h.startDate.startsWith(selectedYear))
-            .map(h => h.startDate.slice(5, 7))
-        )
-      ).sort((a, b) => Number(a) - Number(b))
+      new Set(
+        endedHackathons
+          .filter(h => h.startDate.startsWith(selectedYear))
+          .map(h => h.startDate.slice(5, 7))
+      )
+    ).sort((a, b) => Number(a) - Number(b))
     : [];
 
   // 선택된 연/월에 해당하는 대회 목록
   const filteredEndedHackathons = selectedYear && selectedMonth
     ? endedHackathons.filter(h =>
-        h.startDate.startsWith(`${selectedYear}-${selectedMonth}`)
-      )
+      h.startDate.startsWith(`${selectedYear}-${selectedMonth}`)
+    )
     : [];
 
   const handleYearChange = (year: string) => {
@@ -104,6 +120,13 @@ export function RankingsPage() {
     setSelectedMonth(month);
     setSelectedHackathon('');
   };
+
+  const rankings = useMemo(() => {
+    return [...baseRankings].sort((a, b) => {
+      if (activeView === 'tier_global') return b.xp - a.xp;
+      return b.totalScore - a.totalScore;
+    });
+  }, [baseRankings, activeView]);
 
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3);
@@ -124,52 +147,38 @@ export function RankingsPage() {
           글로벌 랭킹
         </h1>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          해커톤 성적 기반 활동 점수 (성적 상위 3개 대회 합산)
+          해커톤 성적 기반 활동 랭킹
         </p>
       </motion.div>
 
       {/* View Switcher */}
       <div className="flex gap-2 mb-8">
-        {(['global', 'hackathon'] as const).map(v => (
+        {[
+          { id: 'hackathon_global', label: '🌐 대회 랭킹' },
+          { id: 'tier_global', label: '⭐ 티어 랭킹' },
+          { id: 'hackathon_local', label: '🏆 해커톤 별 순위' }
+        ].map(v => (
           <button
-            key={v}
-            onClick={() => setActiveView(v)}
+            key={v.id}
+            onClick={() => setActiveView(v.id as typeof activeView)}
             className="px-5 py-2.5 rounded-xl text-sm transition-all"
             style={{
-              background: activeView === v ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${activeView === v ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              color: activeView === v ? '#a78bfa' : 'rgba(255,255,255,0.6)',
-              fontWeight: activeView === v ? 600 : 400,
+              background: activeView === v.id ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${activeView === v.id ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              color: activeView === v.id ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+              fontWeight: activeView === v.id ? 600 : 400,
             }}
           >
-            {v === 'global' ? '🌐 전체 랭킹' : '🏆 해커톤 별 순위'}
+            {v.label}
           </button>
         ))}
-
-        {activeView === 'global' && (
-          <div className="ml-auto flex gap-2">
-            {RANKING_PERIOD_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setPeriod(value)}
-                className="px-3 py-2 rounded-xl text-xs transition-all"
-                style={{
-                  background: period === value ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${period === value ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                  color: period === value ? '#a78bfa' : 'rgba(255,255,255,0.5)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {activeView === 'global' ? (
+      {activeView !== 'hackathon_local' ? (
         <>
-          {/* Score Formula - 위로 이동 */}
+          {/* Score Formula */}
           <motion.div
+            key={`info-${activeView}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -179,10 +188,25 @@ export function RankingsPage() {
             <div className="flex items-start gap-2">
               <Zap size={14} className="text-violet-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-white mb-1" style={{ fontWeight: 600 }}>점수 계산 방식</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  대회별 점수 = √(총 팀 수) ÷ √(내 순위) × 100 · 성적 상위 3개 대회 합산 적용
+                <p className="text-xs text-white mb-1" style={{ fontWeight: 600 }}>
+                  {activeView === 'tier_global' ? 'XP 산정 방식' : '점수 계산 방식'}
                 </p>
+                <div className="text-xs space-y-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {activeView === 'tier_global' ? (
+                    <>
+                      <p>대회 성적 보상, 팀 기여도 증명, 해커톤 완주 보너스 등을 종합적으로 합산하여 티어 점수(XP)가 부여됩니다.</p>
+                      <div className="mt-2 flex gap-2 flex-wrap">
+                        {[...TIERS].reverse().map(t => (
+                          <span key={t.id} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: t.bgColor, color: t.color, border: `1px solid ${t.borderColor}` }}>
+                            {t.name} ({t.xpMin} ~ {t.xpMax ? t.xpMax : '∞'} XP)
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p>대회별 점수 = √(총 팀 수) ÷ √(내 순위) × 100 · 성적 상위 3개 대회 합산 적용</p>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -190,13 +214,14 @@ export function RankingsPage() {
           {/* Podium */}
           {top3.length >= 3 && (
             <motion.div
+              key={`podium-${activeView}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex justify-center items-end gap-6 mb-12"
             >
               {[top3[1], top3[0], top3[2]].map((entry, i) => {
                 const actualRank = i === 0 ? 2 : i === 1 ? 1 : 3;
-                return entry ? <PodiumCard key={entry.tag} entry={entry} rank={actualRank} /> : null;
+                return entry ? <PodiumCard key={entry.tag} entry={entry} rank={actualRank} period={activeView === 'tier_global' ? 'tier' : 'hackathon'} /> : null;
               })}
             </motion.div>
           )}
@@ -207,9 +232,18 @@ export function RankingsPage() {
               <div className="grid grid-cols-12 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 <span className="col-span-1">순위</span>
                 <span className="col-span-5">참가자</span>
-                <span className="col-span-2 text-center">참가 수</span>
-                <span className="col-span-2 text-center">최고 순위</span>
-                <span className="col-span-2 text-right">점수</span>
+                {activeView === 'tier_global' ? (
+                  <>
+                    <span className="col-span-3 text-center">티어</span>
+                    <span className="col-span-3 text-right">XP</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="col-span-2 text-center">참가 수</span>
+                    <span className="col-span-2 text-center">최고 순위</span>
+                    <span className="col-span-2 text-right">점수</span>
+                  </>
+                )}
               </div>
             </div>
             {rankings.length === 0 ? (
@@ -258,17 +292,34 @@ export function RankingsPage() {
                         <div className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{entry.tag}</div>
                       </div>
                     </div>
-                    <div className="col-span-2 text-center text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      {entry.hackathonCount}회
-                    </div>
-                    <div className="col-span-2 text-center text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      {entry.bestRank === 999 ? '-' : `${entry.bestRank}위`}
-                    </div>
-                    <div className="col-span-2 text-right">
-                      <span className="text-sm" style={{ color: i < 3 ? '#fbbf24' : '#a78bfa', fontWeight: 700 }}>
-                        {entry.totalScore}pt
-                      </span>
-                    </div>
+                    {activeView === 'tier_global' ? (
+                      <>
+                        <div className="col-span-3 flex justify-center">
+                          <div className="px-2 py-1 rounded text-xs" style={{ background: entry.tierInfo.bgColor, color: entry.tierInfo.color, border: `1px solid ${entry.tierInfo.borderColor}`, fontWeight: 600 }}>
+                            {entry.tierInfo.name}
+                          </div>
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm" style={{ color: i < 3 ? '#fbbf24' : '#a78bfa', fontWeight: 700 }}>
+                            {entry.xp} XP
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="col-span-2 text-center text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                          {entry.hackathonCount}회
+                        </div>
+                        <div className="col-span-2 text-center text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                          {entry.bestRank === 999 ? '-' : `${entry.bestRank}위`}
+                        </div>
+                        <div className="col-span-2 text-right">
+                          <span className="text-sm" style={{ color: i < 3 ? '#fbbf24' : '#a78bfa', fontWeight: 700 }}>
+                            {entry.totalScore}pt
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </motion.div>
                 );
               })

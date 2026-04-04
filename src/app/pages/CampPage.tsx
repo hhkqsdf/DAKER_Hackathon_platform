@@ -819,8 +819,8 @@ function TeamCard({
 }: {
   team: TeamWithScore;
   hackathons: Hackathon[];
-  onApply: (t: Team) => void;
-  onCancelApply: (t: Team) => void;
+  onApply: (t: TeamWithScore) => void;
+  onCancelApply: (t: TeamWithScore) => void;
   index: number;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
@@ -1121,10 +1121,13 @@ export function CampPage() {
     return () => window.removeEventListener('storage', loadData);
   }, []);
 
-  // URL param이 바뀌면 hackathon 필터 동기화
+  // URL param이 바뀌면 hackathon 필터 및 모달 열기 동기화
   useEffect(() => {
     if (hackathonFilter) setFilterHackathon(hackathonFilter);
-  }, [hackathonFilter]);
+    if (searchParams.get('create') === 'true') {
+      setShowCreateModal(true);
+    }
+  }, [hackathonFilter, searchParams]);
 
   const filtered = teams.filter(t => {
     const matchSearch =
