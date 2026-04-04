@@ -1,7 +1,7 @@
 import { Trophy, Medal, TrendingUp, Users, Calendar, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState, useEffect, useMemo } from 'react';
-import { getStorage, getGlobalRankings, GlobalRankingEntry, LeaderboardEntry, Hackathon } from '../../lib/storage';
+import { getStorage, getGlobalRankings, GlobalRankingEntry, LeaderboardEntry, Hackathon, Team } from '../../lib/storage';
 import { calculateXP, getTierFromXP, TierInfo, TIERS } from '../../lib/tier';
 import { Link } from 'react-router';
 
@@ -54,6 +54,7 @@ function PodiumCard({ entry, rank, period }: { entry: EnrichedRankingEntry; rank
 export function RankingsPage() {
   const [baseRankings, setBaseRankings] = useState<EnrichedRankingEntry[]>([]);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [leaderboards, setLeaderboards] = useState<LeaderboardEntry[]>([]);
   const [userTag, setUserTag] = useState('');
   const [activeView, setActiveView] = useState<'hackathon_global' | 'tier_global' | 'hackathon_local'>('hackathon_global');
@@ -76,6 +77,7 @@ export function RankingsPage() {
 
       setBaseRankings(xpRankings);
       setHackathons(data.hackathons);
+      setAllTeams(data.teams);
       setLeaderboards(data.leaderboards);
       setUserTag(data.userProfile.tag);
     };
@@ -131,9 +133,40 @@ export function RankingsPage() {
   const top3 = rankings.slice(0, 3);
   const rest = rankings.slice(3);
 
-  const hackathonLeaderboard = leaderboards
-    .filter(l => l.hackathonSlug === selectedHackathon && l.rank !== 999)
-    .sort((a, b) => a.rank - b.rank);
+  const currentHackathon = hackathons.find(h => h.slug === selectedHackathon);
+
+  const hackathonLeaderboard = useMemo(() => {
+    if (!selectedHackathon) return [];
+
+    // 1. 리더보드 데이터에서 이 대회에 해당하는 항목 가져오기
+    const lbEntries = leaderboards.filter(l => l.hackathonSlug === selectedHackathon);
+    
+    // 2. 리더보드 항목 형식으로 변환
+    const leaderboardView = lbEntries.map(l => ({
+      id: l.teamId,
+      teamName: l.teamName,
+      memberNames: l.memberNames,
+      rank: l.rank,
+      score: l.score,
+    }));
+
+    // 3. 리더보드에는 없으나 대회에 참가 중인 실제 팀 추가 (심사 중 또는 미제출)
+    const extraTeams = allTeams.filter(t => 
+      t.hackathonSlug === selectedHackathon && 
+      !lbEntries.some(l => l.teamId === t.id)
+    );
+
+    const extraLeaderboard = extraTeams.map(t => ({
+      id: t.id,
+      teamName: t.teamName,
+      memberNames: t.members.map(m => m.name),
+      rank: t.submission ? 999 : 1000,
+      score: 0,
+    }));
+
+    // 4. 합치고 정렬: 명시된 순위 -> 심사 중(999) -> 미제출(1000)
+    return [...leaderboardView, ...extraLeaderboard].sort((a, b) => a.rank - b.rank);
+  }, [selectedHackathon, allTeams, leaderboards]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -192,20 +225,15 @@ export function RankingsPage() {
                   {activeView === 'tier_global' ? 'XP 산정 방식' : '점수 계산 방식'}
                 </p>
                 <div className="text-xs space-y-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  {activeView === 'tier_global' ? (
-                    <>
+                    {activeView === 'tier_global' ? (
                       <p>대회 성적 보상, 팀 기여도 증명, 해커톤 완주 보너스 등을 종합적으로 합산하여 티어 점수(XP)가 부여됩니다.</p>
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        {[...TIERS].reverse().map(t => (
-                          <span key={t.id} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: t.bgColor, color: t.color, border: `1px solid ${t.borderColor}` }}>
-                            {t.name} ({t.xpMin} ~ {t.xpMax ? t.xpMax : '∞'} XP)
-                          </span>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <p>대회별 점수 = √(총 팀 수) ÷ √(내 순위) × 100 · 성적 상위 3개 대회 합산 적용</p>
-                  )}
+                    ) : (
+                      <p>
+                        글로벌 랭킹 점수 = √(총 팀 수) ÷ √(내 순위) × 100 · 성적 상위 3개 대회 합산 적용 
+                        <br />
+                        <span className="opacity-70 mt-1 inline-block text-[10px]">※ 개별 대회 점수는 해당 대회의 설정(평가 산식 또는 투표)에 따라 산출됩니다.</span>
+                      </p>
+                    )}
                 </div>
               </div>
             </div>
@@ -428,34 +456,53 @@ export function RankingsPage() {
               <p>이 해커톤의 결과가 아직 없어요.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {hackathonLeaderboard.map((entry, i) => (
-                <motion.div
-                  key={entry.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-4 p-5 rounded-2xl"
-                  style={{
-                    background: entry.rank <= 3 ? 'rgba(234,179,8,0.06)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${entry.rank <= 3 ? 'rgba(234,179,8,0.15)' : 'rgba(255,255,255,0.08)'}`,
-                  }}
-                >
-                  <div className="text-2xl w-10 text-center">
-                    {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white text-sm" style={{ fontWeight: 700 }}>{entry.teamName}</div>
-                    <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      <Users size={11} />
-                      {entry.memberNames.join(', ')}
+            <div className="space-y-4">
+              {/* Scoring Method Info for following Hackathon */}
+              <div className="p-4 rounded-xl flex items-center gap-3 mb-4" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                <Zap size={16} className="text-violet-400" />
+                <div className="text-xs">
+                  <span className="text-white opacity-60 mr-2">산정 기준:</span>
+                  <span className="text-violet-300 font-semibold">
+                    {currentHackathon?.scoringType === 'voting' ? '참가자 투표 기반 (투표 수)' : '심사위원 평가 산식 (점수)'}
+                  </span>
+                </div>
+              </div>
+
+              {hackathonLeaderboard.length === 0 ? (
+                <div className="text-center py-16 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}>
+                  <Trophy size={40} className="mx-auto mb-3 opacity-30" />
+                  <p>이 해커톤에 참여 중인 팀이 아직 없어요.</p>
+                </div>
+              ) : (
+                hackathonLeaderboard.map((entry: any, i: number) => (
+                  <motion.div
+                    key={entry.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                    className="flex items-center gap-4 p-5 rounded-2xl"
+                    style={{
+                      background: entry.rank <= 3 ? 'rgba(234,179,8,0.06)' : entry.rank === 1000 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${entry.rank <= 3 ? 'rgba(234,179,8,0.15)' : 'rgba(255,255,255,0.08)'}`,
+                      opacity: entry.rank === 1000 ? 0.6 : 1,
+                    }}
+                  >
+                    <div className="text-2xl w-10 text-center">
+                      {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank >= 999 ? '-' : `#${entry.rank}`}
                     </div>
-                  </div>
-                  <div className="text-lg" style={{ fontWeight: 800, color: entry.rank <= 3 ? '#fbbf24' : '#a78bfa' }}>
-                    {entry.score > 0 ? `${entry.score}점` : '심사 중'}
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex-1">
+                      <div className="text-white text-sm" style={{ fontWeight: 700 }}>{entry.teamName}</div>
+                      <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        <Users size={11} />
+                        {entry.memberNames.join(', ')}
+                      </div>
+                    </div>
+                    <div className="text-lg" style={{ fontWeight: 800, color: entry.rank <= 3 ? '#fbbf24' : entry.rank === 1000 ? 'rgba(255,255,255,0.3)' : '#a78bfa' }}>
+                      {entry.rank === 1000 ? '미제출' : entry.rank === 999 ? '심사 중' : `${entry.score}${currentHackathon?.scoringType === 'voting' ? '표' : '점'}`}
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
           )}
         </div>

@@ -842,16 +842,40 @@ function LeaderboardTab({ hackathon, leaderboards }: { hackathon: Hackathon; lea
 
   if (hackathon.status !== 'ended' && entries.length === 0) {
     return (
-      <div className="text-center py-16 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <Clock size={40} className="mx-auto mb-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
-        <p className="text-white mb-1" style={{ fontWeight: 600 }}>아직 결과가 없어요</p>
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>해커톤 종료 후 순위가 공개됩니다.</p>
+      <div className="space-y-4">
+        {/* Scoring Method Info Box */}
+        <div className="p-4 rounded-xl flex items-center gap-3 mb-4" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+          <Zap size={16} className="text-violet-400" />
+          <div className="text-xs">
+            <span className="text-white opacity-60 mr-2">산정 기준:</span>
+            <span className="text-violet-300 font-semibold">
+              {hackathon.scoringType === 'voting' ? '참가자 투표 기반 (투표 수)' : '심사위원 평가 산식 (점수)'}
+            </span>
+          </div>
+        </div>
+
+        <div className="text-center py-16 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Clock size={40} className="mx-auto mb-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
+          <p className="text-white mb-1" style={{ fontWeight: 600 }}>아직 결과가 없어요</p>
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>해커톤 종료 후 순위가 공개됩니다.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      {/* Scoring Method Info Box */}
+      <div className="p-4 rounded-xl flex items-center gap-3 mb-5" style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+        <Zap size={16} className="text-violet-400" />
+        <div className="text-xs">
+          <span className="text-white opacity-60 mr-2">산정 기준:</span>
+          <span className="text-violet-300 font-semibold">
+            {hackathon.scoringType === 'voting' ? '참가자 투표 기반 (투표 수)' : '심사위원 평가 산식 (점수)'}
+          </span>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-white" style={{ fontWeight: 700 }}>최종 순위</h3>
         {unranked.length > 0 && <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>제출 팀: {unranked.length}팀 (심사 중)</span>}
@@ -873,7 +897,11 @@ function LeaderboardTab({ hackathon, leaderboards }: { hackathon: Hackathon; lea
             <div className="text-white text-sm" style={{ fontWeight: 700 }}>{entry.teamName}</div>
             <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{entry.memberNames.join(', ')}</div>
           </div>
-          <div className="text-right"><div className="text-lg" style={{ fontWeight: 800, color: entry.rank === 1 ? '#fbbf24' : '#a78bfa' }}>{entry.score}점</div></div>
+          <div className="text-right">
+            <div className="text-lg" style={{ fontWeight: 800, color: entry.rank === 1 ? '#fbbf24' : '#a78bfa' }}>
+              {entry.score}{hackathon.scoringType === 'voting' ? '표' : '점'}
+            </div>
+          </div>
         </motion.div>
       ))}
     </div>

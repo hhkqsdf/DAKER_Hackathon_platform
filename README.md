@@ -58,4 +58,4 @@ npm run build
 ---
 
 ## 🔗 Project Resources
-- Live Demo: [https://] 🚀
+- Live Demo: (https://) 🚀

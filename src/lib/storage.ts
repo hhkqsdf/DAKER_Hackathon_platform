@@ -53,6 +53,7 @@ export interface Hackathon {
   guidelines: string[];
   submissionRequirements: string[];
   organizer: string;
+  scoringType: 'evaluation' | 'voting';
 }
 
 export interface PrizeDetail {
@@ -246,6 +247,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
       '팀 소개 및 역할 분담',
     ],
     organizer: 'DAKER Labs',
+    scoringType: 'evaluation',
   },
   {
     slug: 'mobile-ux-2026',
@@ -282,6 +284,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     ],
     submissionRequirements: ['앱 APK/IPA 또는 TestFlight 링크', '디자인 원본 파일 (Figma)', '시연 영상'],
     organizer: 'UX Korea Community',
+    scoringType: 'voting',
   },
   {
     slug: 'devops-cloud-2026',
@@ -320,6 +323,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     ],
     submissionRequirements: ['GitHub 리포지토리 (IaC 코드 포함)', '아키텍처 다이어그램', '5분 이내 데모 영상', '비용 분석 보고서'],
     organizer: 'Cloud Native Korea',
+    scoringType: 'evaluation',
   },
   {
     slug: 'health-tech-2026',
@@ -358,6 +362,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     ],
     submissionRequirements: ['GitHub 링크', '서비스 데모 영상 (5분)', '임상 효과 보고서', '개인정보 처리 방침'],
     organizer: 'Digital Health Korea',
+    scoringType: 'evaluation',
   },
 
   // ── 예정 (1) ──────────────────────────────────────────────
@@ -403,6 +408,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
       '기술 문서 (아키텍처 다이어그램 포함)',
     ],
     organizer: 'Web3 Korea Foundation',
+    scoringType: 'evaluation',
   },
 
   // ── 종료 (5) — 연도·월 분산 ──────────────────────────────
@@ -438,6 +444,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     guidelines: ['환경 관련 주제만 허용됩니다.', '데이터 출처를 명확히 밝혀야 합니다.'],
     submissionRequirements: ['GitHub 링크', '데모 영상', '환경 임팩트 보고서'],
     organizer: 'Green Future Foundation',
+    scoringType: 'evaluation',
   },
   {
     slug: 'fintech-2025',
@@ -466,6 +473,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     guidelines: ['금융 규제 준수 필수', '개인정보 처리 방침 명시 필요'],
     submissionRequirements: ['GitHub 링크', '서비스 데모', '보안 검토 보고서'],
     organizer: 'FinTech Korea',
+    scoringType: 'evaluation',
   },
   {
     slug: 'healthcare-ai-2025',
@@ -499,6 +507,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     guidelines: ['비식별화된 공공 의료 데이터만 사용 가능합니다.', '모델 학습 코드와 가중치를 함께 제출해야 합니다.'],
     submissionRequirements: ['GitHub 링크 (모델 포함)', '임상 효과 보고서 (PDF)', '시연 영상 (3분)'],
     organizer: 'K-Digital Medical Consortium',
+    scoringType: 'evaluation',
   },
   {
     slug: 'iot-smart-city-2024',
@@ -532,6 +541,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     guidelines: ['제공된 시뮬레이션 IoT 데이터셋을 반드시 활용해야 합니다.', '실시간 대시보드 구현이 필수입니다.'],
     submissionRequirements: ['GitHub 링크', '실시간 대시보드 데모', '아키텍처 다이어그램', '3분 영상'],
     organizer: 'Smart City Korea Initiative',
+    scoringType: 'evaluation',
   },
   {
     slug: 'edu-tech-2024',
@@ -565,6 +575,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     guidelines: ['교육 관련 주제만 허용됩니다.', '미성년자 데이터 수집은 금지됩니다.'],
     submissionRequirements: ['GitHub 링크', '서비스 데모', '학습 효과 측정 보고서'],
     organizer: 'EdTech Alliance Korea',
+    scoringType: 'evaluation',
   },
   {
     slug: 'app-festival-2025',
@@ -602,6 +613,7 @@ const INITIAL_HACKATHONS: Hackathon[] = [
     ],
     submissionRequirements: ['GitHub 링크', 'APK 또는 TestFlight 링크', '앱 소개 영상 (3분)', '디자인 목업 파일'],
     organizer: 'Korea Mobile Developer Association',
+    scoringType: 'evaluation',
   },
 ];
 

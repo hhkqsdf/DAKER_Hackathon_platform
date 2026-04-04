@@ -1,0 +1,15 @@
+- [x] Update `Hackathon` interface and initial data in `src/lib/storage.ts`
+    - [x] Add `scoringType: 'evaluation' | 'voting'` to `Hackathon` interface
+    - [x] Add `scoringType` to `INITIAL_HACKATHONS` entries
+- [x] Refactor `RankingsPage.tsx` leaderboard logic
+    - [x] Update `hackathonLeaderboard` calculation to SYNC with global leaderboard entries
+    - [x] Merge `leaderboards` data with `allTeams` for comprehensive view
+    - [x] Implement "미제출" (Not Submitted) status for teams without submissions
+    - [x] Dynamically update labels ("점수" vs "투표수") based on `scoringType`
+    - [x] Update the score formula information box
+    - [x] Renamed `teams` state to `allTeams` to fix `ReferenceError`
+- [x] Enhance `HackathonDetailPage.tsx` leaderboard view
+    - [x] Add scoring method info box
+    - [x] Dynamic labels ("표" vs "점")
+- [x] Revert `AI Innovation Challenge 2026` to `ongoing`
+- [x] Final code verification (Logical check)
