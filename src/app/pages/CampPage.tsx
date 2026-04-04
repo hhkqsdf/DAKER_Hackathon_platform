@@ -1,6 +1,7 @@
 import {
   Users, Zap, Plus, ExternalLink, ChevronRight, Search,
   Send, X, Lock, AlertTriangle, XCircle, Clock, AlertCircle, Star, Crown, Trophy,
+  UserPlus, Info,
 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,7 +11,7 @@ import {
   getStorage, Team, UserProfile, Hackathon,
   calculateMatchScore, applyToTeam, cancelApplication,
   checkExistingApplicationForHackathon, createTeam,
-  getUserApplications, LookingFor,
+  getUserApplications, LookingFor, acceptInvitation,
 } from '../../lib/storage';
 import { TECH_CATEGORIES, SKILLS_BY_CATEGORY, CATEGORY_COLORS } from '../../lib/constants';
 import type { TechCategory } from '../../lib/constants';
@@ -24,6 +25,7 @@ interface TeamWithScore extends Team {
   hasTeamInHackathon: boolean;
   hackathonStatus: 'ongoing' | 'upcoming' | 'ended' | null;
   isUserRegisteredForHackathon: boolean;
+  isInvited: boolean;
 }
 
 // src/app/pages/CampPage.tsx 상단 임포트 추가
@@ -68,6 +70,7 @@ function ConfirmModal({
   onCancel,
   danger = false,
   zIndex = 60,
+  variant,
 }: {
   title: string;
   message: string;
@@ -76,7 +79,11 @@ function ConfirmModal({
   onCancel: () => void;
   danger?: boolean;
   zIndex?: number;
+  variant?: 'info' | 'warning' | 'danger';
 }) {
+  const Icon = variant === 'info' ? Info : AlertTriangle;
+  const iconColor = variant === 'danger' || danger ? 'text-red-400' : (variant === 'info' ? 'text-blue-400' : 'text-yellow-400');
+  const borderColor = variant === 'danger' || danger ? 'rgba(239,68,68,0.3)' : (variant === 'info' ? 'rgba(59,130,246,0.3)' : 'rgba(124,58,237,0.3)');
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -91,11 +98,11 @@ function ConfirmModal({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 8 }}
         className="w-full max-w-sm rounded-2xl p-6"
-        style={{ background: '#0f0f1f', border: '1px solid rgba(124,58,237,0.3)' }}
+        style={{ background: '#0f0f1f', border: `1px solid ${borderColor}` }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-4">
-          <AlertTriangle size={18} className={danger ? 'text-red-400 shrink-0 mt-0.5' : 'text-yellow-400 shrink-0 mt-0.5'} />
+          <Icon size={18} className={`${iconColor} shrink-0 mt-0.5`} />
           <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>{title}</h3>
         </div>
         <p className="text-sm mb-5 ml-7" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>{message}</p>
@@ -1031,6 +1038,19 @@ function TeamCard({
               <XCircle size={10} />
               지원 취소
             </button>
+          ) : team.isInvited ? (
+            /* 초대 수락 버튼 */
+            <button
+              onClick={() => onApply(team)} // handleApplyRequest will detect isInvited if we update it, or we can use a separate prop
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] sm:text-xs text-white whitespace-nowrap shrink-0 transition-all hover:scale-105"
+              style={{
+                background: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+                boxShadow: '0 2px 10px rgba(124,58,237,0.4)',
+              }}
+            >
+              <UserPlus size={10} />
+              초대 수락
+            </button>
           ) : team.isOpen ? (
             <button
               onClick={() => onApply(team)}
@@ -1061,6 +1081,7 @@ function TeamCard({
 
 export function CampPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const hackathonFilter = searchParams.get('hackathon');
 
   const [teams, setTeams] = useState<TeamWithScore[]>([]);
@@ -1070,8 +1091,9 @@ export function CampPage() {
   const [filterOpen, setFilterOpen] = useState<'all' | 'open' | 'closed' | 'favorites'>('all');
   const [filterHackathon, setFilterHackathon] = useState<string>(hackathonFilter || '');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [applyTarget, setApplyTarget] = useState<Team | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Team | null>(null);
+  const [applyTarget, setApplyTarget] = useState<TeamWithScore | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<TeamWithScore | null>(null);
+  const [acceptConfirm, setAcceptConfirm] = useState<{ teamId: string; teamName: string } | null>(null);
   const [favorites, setFavorites] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('daker_fav_teams') || '[]'); } catch { return []; }
   });
@@ -1097,6 +1119,7 @@ export function CampPage() {
         hasTeamInHackathon: !!(t.hackathonSlug && myTeamHackathons.has(t.hackathonSlug) && !t.members.some(m => m.tag === data.userProfile.tag)),
         hackathonStatus: t.hackathonSlug ? data.hackathons.find(h => h.slug === t.hackathonSlug)?.status || null : null,
         isUserRegisteredForHackathon: t.hackathonSlug ? data.userProfile.joinedHackathons.includes(t.hackathonSlug) : false,
+        isInvited: t.invitations.some(inv => inv.tag === data.userProfile.tag && inv.status === 'pending'),
       }))
       .sort((a, b) => {
         const getPriority = (t: TeamWithScore) => {
@@ -1149,6 +1172,11 @@ export function CampPage() {
   const hasProfile = (userProfile?.techStack?.length || 0) > 0;
 
   const handleApplyRequest = (team: TeamWithScore) => {
+    // If user is invited, show accept confirm instead of apply modal
+    if (team.isInvited) {
+      setAcceptConfirm({ teamId: team.id, teamName: team.teamName });
+      return;
+    }
     // Block if hackathon is ended or upcoming
     if (team.hackathonStatus === 'ended') {
       toast.error('이미 종료된 대회의 팀에는 지원할 수 없어요.');
@@ -1169,6 +1197,18 @@ export function CampPage() {
       return;
     }
     setApplyTarget(team);
+  };
+
+  const handleAcceptInvitation = () => {
+    if (!acceptConfirm) return;
+    acceptInvitation(acceptConfirm.teamId);
+    toast.success(`🎉 "${acceptConfirm.teamName}" 팀의 초대를 수락했습니다!`);
+    setAcceptConfirm(null);
+    loadData(); // Refresh list to update status
+    // Redirect to the team dashboard after a short delay
+    setTimeout(() => {
+      navigate(`/teams/${acceptConfirm.teamId}`);
+    }, 1000);
   };
 
   const handleCancelConfirm = () => {
@@ -1430,6 +1470,18 @@ export function CampPage() {
             onCancel={() => setCancelTarget(null)}
             danger
             zIndex={55}
+          />
+        )}
+        {acceptConfirm && (
+          <ConfirmModal
+            key="accept-invitation-modal"
+            title="초대 수락 확인"
+            message={`"${acceptConfirm.teamName}" 팀의 초대를 수락하시겠습니까?\n수락 시 해당 팀의 멤버로 등록됩니다.`}
+            confirmLabel="수락하기"
+            onConfirm={handleAcceptInvitation}
+            onCancel={() => setAcceptConfirm(null)}
+            variant="info"
+            zIndex={70}
           />
         )}
       </AnimatePresence>

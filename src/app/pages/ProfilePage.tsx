@@ -225,11 +225,11 @@ function InvitationConfirmModal({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 8 }}
         className="w-full max-w-sm rounded-2xl p-6"
-        style={{ background: '#0f0f1f', border: '1px solid rgba(124,58,237,0.3)' }}
+        style={{ background: '#0f0f1f', border: '1px solid rgba(59,130,246,0.3)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-4">
-          <Info size={18} className="text-violet-400 shrink-0 mt-0.5" />
+          <Info size={18} className="text-blue-400 shrink-0 mt-0.5" />
           <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>초대 수락 확인</h3>
         </div>
         <p className="text-sm mb-5 ml-7 leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
@@ -257,10 +257,66 @@ function InvitationConfirmModal({
   );
 }
 
+function RejectConfirmModal({
+  teamName,
+  onConfirm,
+  onCancel,
+}: {
+  teamName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 8 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 8 }}
+        className="w-full max-w-sm rounded-2xl p-6"
+        style={{ background: '#0f0f1f', border: '1px solid rgba(239,68,68,0.3)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+          <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>초대 거절 확인</h3>
+        </div>
+        <p className="text-sm mb-5 ml-7 leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
+          <span className="text-white" style={{ fontWeight: 600 }}>"{teamName}"</span> 팀의 초대를 거절하시겠습니까?<br />
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>거절 후에는 해당 팀의 초대에 다시 응할 수 없습니다.</span>
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm transition-all"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+          >
+            돌아가기
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', boxShadow: '0 4px 14px rgba(220,38,38,0.35)' }}
+          >
+            거절하기
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function IncomingInvitationsSection() {
   const [invitations, setInvitations] = useState<PendingInvitationRecord[]>([]);
   const [hackathonMap, setHackathonMap] = useState<Record<string, string>>({});
   const [acceptConfirm, setAcceptConfirm] = useState<{ teamId: string; teamName: string } | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<{ teamId: string; teamName: string } | null>(null);
 
   const loadData = () => {
     const { hackathons } = getStorage();
@@ -284,6 +340,7 @@ function IncomingInvitationsSection() {
 
   const handleReject = (teamId: string) => {
     rejectInvitation(teamId);
+    setRejectConfirm(null);
     toast.success('초대를 거절했습니다.');
   };
 
@@ -349,7 +406,7 @@ function IncomingInvitationsSection() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => handleReject(inv.teamId)}
+                    onClick={() => setRejectConfirm({ teamId: inv.teamId, teamName: inv.teamName })}
                     className="px-3 py-2 rounded-xl text-sm transition-all"
                     style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
                   >
@@ -376,6 +433,13 @@ function IncomingInvitationsSection() {
             teamName={acceptConfirm.teamName}
             onConfirm={() => handleAccept(acceptConfirm.teamId)}
             onCancel={() => setAcceptConfirm(null)}
+          />
+        )}
+        {rejectConfirm && (
+          <RejectConfirmModal
+            teamName={rejectConfirm.teamName}
+            onConfirm={() => handleReject(rejectConfirm.teamId)}
+            onCancel={() => setRejectConfirm(null)}
           />
         )}
       </AnimatePresence>
