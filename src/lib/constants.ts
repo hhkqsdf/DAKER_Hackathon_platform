@@ -35,7 +35,7 @@ export const CATEGORY_COLORS: Record<TechCategory, { bg: string; text: string; b
 };
 
 export const STATUS_CONFIG = {
-  ongoing: { label: '진행중', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+  ongoing: { label: '진행 중', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
   upcoming: { label: '예정', bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', dot: 'bg-blue-400' },
   ended: { label: '종료', bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-400' },
 };

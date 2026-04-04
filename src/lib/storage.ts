@@ -1584,6 +1584,14 @@ export function submitPersonalProject(slug: string, data: { notes: string; fileU
       cancelApplication(app.teamId);
     }
   });
+
+  // 추가 수정: 개인 최종 제출 시 해당 대회의 모든 대기 중인 초대 거절 처리
+  const invs = getAllPendingInvitations();
+  invs.forEach(inv => {
+    if (inv.hackathonSlug === slug) {
+      rejectInvitation(inv.teamId);
+    }
+  });
 }
 
 // ─── Team Operations ──────────────────────────────────────────

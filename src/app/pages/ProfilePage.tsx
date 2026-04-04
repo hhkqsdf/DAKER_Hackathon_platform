@@ -896,6 +896,12 @@ export function ProfilePage() {
                   const myTeam = getUserTeamForHackathon(h.slug);
                   const myApps = applications.filter(a => a.hackathonSlug === h.slug && a.status === 'pending');
                   const primaryApp = myApps[0];
+                  
+                  // 최종 제출 여부 확인 (개인 또는 팀)
+                  const isSubmitted = !!(profile.personalData[h.slug]?.personalSubmission || myTeam?.isFinalized);
+                  const displayStatus = (isSubmitted && h.status === 'ongoing') 
+                    ? { label: '최종 제출 완료', bg: 'bg-blue-500/20', text: 'text-blue-400' }
+                    : status;
 
                   return (
                     <div
@@ -906,7 +912,7 @@ export function ProfilePage() {
                       <div>
                         <div className="text-white text-sm mb-1" style={{ fontWeight: 600 }}>{h.title}</div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.text}`}>{status.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${displayStatus.bg} ${displayStatus.text}`}>{displayStatus.label}</span>
                           <span className="text-xs px-2 py-0.5 rounded-full" style={{
                             background: myTeam ? 'rgba(52,211,153,0.15)' : primaryApp ? 'rgba(124,58,237,0.15)' : 'rgba(251,191,36,0.15)',
                             color: myTeam ? '#34d399' : primaryApp ? '#a78bfa' : '#fbbf24',

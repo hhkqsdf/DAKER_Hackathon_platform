@@ -882,7 +882,13 @@ function TeamCard({
       className="rounded-2xl p-5 flex flex-col"
       style={{
         background: isMyTeam ? 'rgba(124,58,237,0.12)' : blocked ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${isMyTeam ? 'rgba(124,58,237,0.4)' : hasApplied ? 'rgba(52,211,153,0.25)' : blocked ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'}`,
+        border: `1px solid ${
+          isMyTeam ? 'rgba(124,58,237,0.4)' : 
+          team.isInvited ? 'rgba(59,130,246,0.35)' :
+          hasApplied ? 'rgba(52,211,153,0.25)' : 
+          blocked ? 'rgba(255,255,255,0.05)' : 
+          'rgba(255,255,255,0.08)'
+        }`,
         opacity: blocked ? 0.7 : 1,
       }}
     >
@@ -911,6 +917,18 @@ function TeamCard({
               }}
             >
               지원 완료
+            </span>
+          )}
+          {team.isInvited && !isMyTeam && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full mb-1.5 inline-block"
+              style={{
+                background: 'rgba(59,130,246,0.12)',
+                color: '#60a5fa',
+                border: '1px solid rgba(59,130,246,0.3)',
+              }}
+            >
+              초대 받음
             </span>
           )}
           <h3 className="text-white text-sm truncate" style={{ fontWeight: 700 }}>{team.teamName}</h3>
