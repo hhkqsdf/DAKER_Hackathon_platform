@@ -1253,7 +1253,8 @@ export function CampPage() {
       (filterOpen === 'open' ? t.isOpen : !t.isOpen);
     const matchFav = filterOpen !== 'favorites' || favorites.includes(t.id);
     const matchHackathon = !filterHackathon || t.hackathonSlug === filterHackathon;
-    return matchSearch && matchOpen && matchFav && matchHackathon;
+    const isNotEnded = t.hackathonStatus !== 'ended';
+    return matchSearch && matchOpen && matchFav && matchHackathon && isNotEnded;
   });
 
   const hackathonName = filterHackathon
