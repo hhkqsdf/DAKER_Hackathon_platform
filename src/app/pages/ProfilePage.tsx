@@ -11,6 +11,7 @@ import {
   getStorage, updateUserProfile, UserProfile, TechStack,
   getUserTeamForHackathon, isFreeAgent,
   getAllUserApplications, UserApplicationRecord, cancelApplication,
+  getAllPendingInvitations, PendingInvitationRecord, acceptInvitation, rejectInvitation,
 } from '../../lib/storage';
 import { TECH_CATEGORIES, SKILLS_BY_CATEGORY, CATEGORY_COLORS, STATUS_CONFIG } from '../../lib/constants';
 import type { TechCategory } from '../../lib/constants';
@@ -197,6 +198,187 @@ function CancelConfirmModal({
           </button>
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+function InvitationConfirmModal({
+  teamName,
+  onConfirm,
+  onCancel,
+}: {
+  teamName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 8 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 8 }}
+        className="w-full max-w-sm rounded-2xl p-6"
+        style={{ background: '#0f0f1f', border: '1px solid rgba(124,58,237,0.3)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <Info size={18} className="text-violet-400 shrink-0 mt-0.5" />
+          <h3 className="text-white text-sm" style={{ fontWeight: 700 }}>초대 수락 확인</h3>
+        </div>
+        <p className="text-sm mb-5 ml-7 leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
+          <span className="text-white" style={{ fontWeight: 600 }}>"{teamName}"</span> 팀의 초대를 수락하시겠습니까?<br />
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>수락 시 해당 팀의 멤버로 등록됩니다.</span>
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm transition-all"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+          >
+            돌아가기
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm text-white transition-all flex items-center justify-center gap-1"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 4px 14px rgba(124,58,237,0.35)' }}
+          >
+            <CheckCircle size={14} /> 수락하기
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function IncomingInvitationsSection() {
+  const [invitations, setInvitations] = useState<PendingInvitationRecord[]>([]);
+  const [hackathonMap, setHackathonMap] = useState<Record<string, string>>({});
+  const [acceptConfirm, setAcceptConfirm] = useState<{ teamId: string; teamName: string } | null>(null);
+
+  const loadData = () => {
+    const { hackathons } = getStorage();
+    const map: Record<string, string> = {};
+    hackathons.forEach(h => { map[h.slug] = h.title; });
+    setHackathonMap(map);
+    setInvitations(getAllPendingInvitations());
+  };
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener('storage', loadData);
+    return () => window.removeEventListener('storage', loadData);
+  }, []);
+
+  const handleAccept = (teamId: string) => {
+    acceptInvitation(teamId);
+    setAcceptConfirm(null);
+    toast.success('초대를 수락하여 팀에 합류했습니다!');
+  };
+
+  const handleReject = (teamId: string) => {
+    rejectInvitation(teamId);
+    toast.success('초대를 거절했습니다.');
+  };
+
+  if (invitations.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18 }}
+      className="rounded-2xl p-6"
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <Zap size={16} className="text-yellow-400" />
+          <h2 className="text-white" style={{ fontWeight: 700 }}>도착한 초대장</h2>
+          <span
+            className="px-2 py-0.5 rounded-full text-xs"
+            style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}
+          >
+            {invitations.length}건
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <AnimatePresence>
+          {invitations.map((inv, i) => {
+            const hackathonTitle = inv.hackathonSlug ? hackathonMap[inv.hackathonSlug] : null;
+
+            return (
+              <motion.div
+                key={inv.teamId}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ delay: i * 0.04 }}
+                className="rounded-xl overflow-hidden p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+                style={{ border: `1px solid rgba(124,58,237,0.3)`, background: 'rgba(124,58,237,0.1)' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-white text-base truncate" style={{ fontWeight: 700 }}>
+                      {inv.teamName}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-xs shrink-0" style={{ background: 'rgba(124,58,237,0.2)', color: '#c4b5fd', border: '1px solid rgba(124,58,237,0.3)' }}>팀장 초대</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    {inv.selectedRole && (
+                      <span className="flex items-center gap-1">
+                        <Briefcase size={10} />
+                        {inv.selectedRole} 합류 요청
+                      </span>
+                    )}
+                    {hackathonTitle && (
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        · {hackathonTitle}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleReject(inv.teamId)}
+                    className="px-3 py-2 rounded-xl text-sm transition-all"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    거절
+                  </button>
+                  <button
+                    onClick={() => setAcceptConfirm({ teamId: inv.teamId, teamName: inv.teamName })}
+                    className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm text-white transition-all hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
+                  >
+                    <CheckCircle size={14} />
+                    수락
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {acceptConfirm && (
+          <InvitationConfirmModal
+            teamName={acceptConfirm.teamName}
+            onConfirm={() => handleAccept(acceptConfirm.teamId)}
+            onCancel={() => setAcceptConfirm(null)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -728,6 +910,9 @@ export function ProfilePage() {
               </div>
             </motion.div>
           )}
+
+          {/* Incoming Invitations */}
+          <IncomingInvitationsSection />
 
           {/* Application History */}
           <ApplicationHistorySection />

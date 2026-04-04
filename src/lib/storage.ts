@@ -193,7 +193,7 @@ const KEYS = {
   HACKATHONS: 'daker_hackathons',
   TEAMS: 'daker_teams',
   LEADERBOARDS: 'daker_leaderboards',
-  INIT: 'daker_initialized_v4', // bumped to v4 — tag format #u → #
+  INIT: 'daker_initialized_v5', // bumped to v5
 };
 
 // ─── Initial Hackathons (4 ongoing · 1 upcoming · 5 ended) ────
@@ -817,7 +817,15 @@ function buildInitialData(myTag: string, myName: string): {
       isFinalized: false,
       isTeamLocked: false,
       applicants: [],
-      invitations: [],
+      invitations: [
+        {
+          tag: myTag,
+          name: myName,
+          sentAt: new Date().toISOString(),
+          status: 'pending',
+          selectedRole: 'Frontend',
+        }
+      ],
       todos: [],
       createdAt: '2026-03-22',
     },
@@ -1375,7 +1383,7 @@ export function initStorage(): void {
     techStack: [
       { category: 'Frontend', skills: ['React', 'TypeScript', 'Next.js', 'Tailwind CSS'] },
     ],
-    joinedHackathons: ['ai-innovation-2026', 'mobile-ux-2026'],
+    joinedHackathons: ['ai-innovation-2026', 'mobile-ux-2026', 'health-tech-2026'],
     personalData: {
       'ai-innovation-2026': {
         todos: [
@@ -1396,6 +1404,12 @@ export function initStorage(): void {
         ],
         phase: 1,
         notes: '모바일 앱 기획 단계. NovaMobile 팀 지원 완료 — 결과 기다리는 중.',
+        memos: [],
+      },
+      'health-tech-2026': {
+        todos: [],
+        phase: 1,
+        notes: '헬스케어 리서치 중. CloudCanvas 팀의 프론트엔드 포지션 초대 고민 중.',
         memos: [],
       },
     },
@@ -1950,6 +1964,32 @@ export function getAllUserApplications(): UserApplicationRecord[] {
     }
   }
   return records.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+}
+
+export interface PendingInvitationRecord {
+  teamId: string;
+  teamName: string;
+  hackathonSlug: string | null;
+  selectedRole?: string;
+  sentAt: string;
+}
+
+export function getAllPendingInvitations(): PendingInvitationRecord[] {
+  const { userProfile, teams } = getStorage();
+  const records: PendingInvitationRecord[] = [];
+  for (const team of teams) {
+    const inv = team.invitations.find(i => i.tag === userProfile.tag && i.status === 'pending');
+    if (inv) {
+      records.push({
+        teamId: team.id,
+        teamName: team.teamName,
+        hackathonSlug: team.hackathonSlug,
+        selectedRole: inv.selectedRole,
+        sentAt: inv.sentAt,
+      });
+    }
+  }
+  return records.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 }
 
 export function findUserByTag(tag: string): { name: string; tag: string } | null {
