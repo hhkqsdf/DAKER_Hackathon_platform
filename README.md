@@ -26,8 +26,7 @@
 - **Frontend**: React, TypeScript, Tailwind CSS, Lucide React
 - **State & Storage**: LocalStorage (Persistent Mocking System)
 - **Animation**: Framer Motion
-- **Design**: [Figma Link](https://www.figma.com/design/BXkFgm1huKOeR4wiAl40bx/DAKER-%ED%95%B4%EC%BB%A4%ED%86%A4-%ED%94%8C%EB%9E%AB%ED%8F%BC--%EA%B0%80%EC%83%81%EC%9C%A0%EC%A0%80-)
-
+- 
 ---
 
 ## 🏃 Running the code
@@ -58,4 +57,4 @@ npm run build
 ---
 
 ## 🔗 Project Resources
-- Live Demo: (https://) 🚀
+- Live Demo: [https://daker-hackathon-platform.vercel.app/] 🚀
