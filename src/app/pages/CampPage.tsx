@@ -1395,7 +1395,7 @@ export function CampPage() {
           </motion.div>
         )}
 
-        {/* AI Profile Hint */}
+        {/* Profile Hint */}
         {!hasProfile && (
           <motion.div
             initial={{ opacity: 0 }}
