@@ -1904,12 +1904,12 @@ export function submitProject(teamId: string, submission: { notes: string; fileU
 //
 // 점수 구성 (슬롯 당 최대 90점 → 퍼센트 환산)
 //   · 직무 유사도 (Role Proximity)  : 직접 일치=50점, 유사 직군=맵 값(최대 35점)
-//   · 스택 커버리지 (Stack Coverage): (보유 스킬 ∩ 요구 스킬) / 요구 스킬 수 * 40점
+//   · 스택 커버리지 (Stack Coverage): (보유 스킬 ∩ 요구 스킬) / 요구 스킬 수 * 50점
 //
 // 사용자의 모든 기술 스택 × 팀의 모든 모집 슬롯 조합 중 최고 점수를 채택해
 // 0 ~ 100% 퍼센트로 반환합니다.
 
-const MATCH_MAX = 90; // role(50) + stack(40)
+const MATCH_MAX = 90; // role(50) + stack(50)
 
 export function calculateMatchScore(userProfile: UserProfile, team: Team): number {
   if (!team.isOpen || team.lookingFor.length === 0) return 0;
@@ -1927,7 +1927,7 @@ export function calculateMatchScore(userProfile: UserProfile, team: Team): numbe
         const matched = slot.skills.filter(s =>
           userSkillsLower.includes(s.toLowerCase())
         ).length;
-        stackScore = (matched / slot.skills.length) * 40;
+        stackScore = (matched / slot.skills.length) * 50;
       }
 
       const slotScore = roleScore + stackScore;
