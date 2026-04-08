@@ -1909,7 +1909,7 @@ export function submitProject(teamId: string, submission: { notes: string; fileU
 // 사용자의 모든 기술 스택 × 팀의 모든 모집 슬롯 조합 중 최고 점수를 채택해
 // 0 ~ 100% 퍼센트로 반환합니다.
 
-const MATCH_MAX = 90; // role(50) + stack(50)
+const MATCH_MAX = 100; // role(50) + stack(50)
 
 export function calculateMatchScore(userProfile: UserProfile, team: Team): number {
   if (!team.isOpen || team.lookingFor.length === 0) return 0;
