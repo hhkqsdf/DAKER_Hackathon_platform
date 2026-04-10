@@ -1261,16 +1261,23 @@ export function CampPage() {
       filterOpen === 'all' || filterOpen === 'favorites' ||
       (filterOpen === 'open' ? t.isOpen : !t.isOpen);
     const matchFav = filterOpen !== 'favorites' || favorites.includes(t.id);
-    // hackathonSlug가 null인 팀(일반 팀)은 대회 필터가 선택되지 않았을 때 항상 노출
-    const matchHackathon = !filterHackathon || t.hackathonSlug === filterHackathon;
+    // '__none__': 일반 프로젝트 팀만 / slug: 해당 대회 팀만 / 빈값: 전체
+    const matchHackathon =
+      !filterHackathon
+        ? true
+        : filterHackathon === '__none__'
+          ? t.hackathonSlug === null
+          : t.hackathonSlug === filterHackathon;
     // 대회 없는 팀은 hackathonStatus가 null이므로 'ended' 필터에 걸리지 않음
     const isNotEnded = t.hackathonStatus !== 'ended';
     return matchSearch && matchOpen && matchFav && matchHackathon && isNotEnded;
   });
 
-  const hackathonName = filterHackathon
-    ? hackathons.find(h => h.slug === filterHackathon)?.title
-    : null;
+  const hackathonName = filterHackathon === '__none__'
+    ? '일반 프로젝트 팀'
+    : filterHackathon
+      ? hackathons.find(h => h.slug === filterHackathon)?.title
+      : null;
 
   const hasProfile = (userProfile?.techStack?.length || 0) > 0;
 
@@ -1448,26 +1455,27 @@ export function CampPage() {
                 }}
               />
             </div>
-            {/* Hackathon filter dropdown — 진행 중인 대회만 */}
-            {hackathons.some(h => h.status === 'ongoing') && (
-              <select
-                value={filterHackathon}
-                onChange={e => setFilterHackathon(e.target.value)}
-                className="sm:w-64 px-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{
-                  background: filterHackathon ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${filterHackathon ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.1)'}`,
-                  color: filterHackathon ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
-                }}
-              >
-                <option value="" style={{ background: '#1a1a2e', color: '#fff' }}>전체 대회</option>
-                {hackathons.filter(h => h.status === 'ongoing').map(h => (
-                  <option key={h.slug} value={h.slug} style={{ background: '#1a1a2e', color: '#fff' }}>
-                    {h.title}
-                  </option>
-                ))}
-              </select>
-            )}
+            {/* Hackathon filter dropdown — 진행 중인 대회 + 일반 팀 */}
+            <select
+              value={filterHackathon}
+              onChange={e => setFilterHackathon(e.target.value)}
+              className="sm:w-64 px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={{
+                background: filterHackathon ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${filterHackathon ? 'rgba(124,58,237,0.45)' : 'rgba(255,255,255,0.1)'}`,
+                color: filterHackathon ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
+              }}
+            >
+              <option value="" style={{ background: '#1a1a2e', color: '#fff' }}>전체 대회</option>
+              {hackathons.filter(h => h.status === 'ongoing').map(h => (
+                <option key={h.slug} value={h.slug} style={{ background: '#1a1a2e', color: '#fff' }}>
+                  {h.title}
+                </option>
+              ))}
+              <option value="__none__" style={{ background: '#1a1a2e', color: 'rgba(148,163,184,0.9)' }}>
+                🌐 일반 프로젝트 팀
+              </option>
+            </select>
           </div>
           {/* Row 2: Status + Favorites filter buttons */}
           <div className="flex gap-2 flex-wrap">
