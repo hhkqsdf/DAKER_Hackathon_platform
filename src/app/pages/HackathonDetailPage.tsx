@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import {
   getStorage, Hackathon, LeaderboardEntry, Team, Submission,
   registerForHackathon, getUserTeamForHackathon, submitProject, submitPersonalProject, AttachedFile,
+  getActualParticipantCount,
 } from '../../lib/storage';
 import { STATUS_CONFIG } from '../../lib/constants';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
@@ -191,7 +192,7 @@ function OverviewTab({ hackathon }: { hackathon: Hackathon }) {
           { label: '주최', value: hackathon.organizer, icon: Star },
           { label: '최대 팀원', value: `${hackathon.maxTeamSize}명`, icon: Users },
           { label: '총 상금', value: hackathon.totalPrize, icon: Trophy },
-          { label: '참가자', value: `${hackathon.participantCount}명`, icon: BarChart3 },
+          { label: '참가자', value: `${getActualParticipantCount(hackathon.slug)}명`, icon: BarChart3 },
         ].map(({ label, value, icon: Icon }) => (
           <div
             key={label}
