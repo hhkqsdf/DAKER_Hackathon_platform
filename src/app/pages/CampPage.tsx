@@ -557,16 +557,12 @@ function CreateTeamModal({
       toast.error('팀 소개를 입력해주세요.');
       return;
     }
-    if (!form.hackathonSlug) {
-      toast.error('참가할 해커톤을 선택해주세요.');
-      return;
-    }
     if (lookingFor.length === 0) {
       toast.error('모집 포지션을 1개 이상 선택해주세요.');
       return;
     }
-    // Validate hackathon status and registration
-    {
+    // 대회가 선택된 경우에만 추가 유효성 검사 수행
+    if (form.hackathonSlug) {
       const { hackathons, userProfile, teams } = getStorage();
       const selectedHackathon = hackathons.find(h => h.slug === form.hackathonSlug);
       if (selectedHackathon && selectedHackathon.status !== 'ongoing') {
@@ -593,9 +589,10 @@ function CreateTeamModal({
     }
     setCreating(true);
     await new Promise(r => setTimeout(r, 600));
+    // hackathonSlug가 빈 문자열이면 null로 변환하여 전달
     const newTeam = createTeam({
       teamName: form.teamName,
-      hackathonSlug: form.hackathonSlug,
+      hackathonSlug: form.hackathonSlug || null,
       isOpen: form.isOpen,
       lookingFor,
       contactUrl: form.contactUrl,
@@ -655,31 +652,32 @@ function CreateTeamModal({
 
           {/* Hackathon */}
           <div>
-            <label className="block text-sm text-white mb-1.5" style={{ fontWeight: 600 }}>
-              연결 해커톤 *
-              </label>
-                <select
-                  value={form.hackathonSlug}
-                  onChange={e => setForm(p => ({ ...p, hackathonSlug: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ 
-                    background: 'rgba(255,255,255,0.06)', 
-                    // 테두리를 항상 intro와 같은 색상으로 고정
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    // 글자색을 항상 흰색으로 유지
-                    color: form.hackathonSlug ? '#fff' : 'rgba(255,255,255,0.35)'
-                  }}
-                >
-                  <option value="" style={{ background: '#1a1a2e', color: 'rgba(255,255,255,0.5)' }}>
-                    해커톤을 선택해주세요
-                  </option>
-                  {hackathons.filter(h => h.status === 'ongoing').map(h => (
-                    <option key={h.slug} value={h.slug} style={{ background: '#1a1a2e' }}>
-                      {h.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <label className="block text-sm text-white mb-1.5" style={{ fontWeight: 600 }}>연결 해커톤 *</label>
+            <select
+              value={form.hackathonSlug}
+              onChange={e => setForm(p => ({ ...p, hackathonSlug: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: form.hackathonSlug ? '#fff' : 'rgba(255,255,255,0.45)',
+              }}
+            >
+              <option value="" style={{ background: '#1a1a2e', color: 'rgba(255,255,255,0.6)' }}>
+              🌐 일반 팀 구성 (해커톤 선택 안 함)
+              </option>
+              {hackathons.filter(h => h.status === 'ongoing').map(h => (
+                <option key={h.slug} value={h.slug} style={{ background: '#1a1a2e', color: '#fff' }}>
+                  {h.title}
+                </option>
+              ))}
+            </select>
+            {!form.hackathonSlug && (
+              <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                대회를 선택하지 않으면 일반 목적의 팀으로 생성됩니다.
+              </p>
+            )}
+          </div>
 
           {/* Intro */}
           <div>
@@ -932,9 +930,20 @@ function TeamCard({
             </span>
           )}
           <h3 className="text-white text-sm truncate" style={{ fontWeight: 700 }}>{team.teamName}</h3>
-          {hackathon && (
+          {hackathon ? (
             <span className="text-xs mt-0.5 block truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {hackathon.title}
+            </span>
+          ) : (
+            <span
+              className="text-xs mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
+              style={{
+                background: 'rgba(148,163,184,0.1)',
+                color: 'rgba(148,163,184,0.7)',
+                border: '1px solid rgba(148,163,184,0.2)',
+              }}
+            >
+              🌐 일반 프로젝트 팀
             </span>
           )}
         </div>
@@ -1252,7 +1261,9 @@ export function CampPage() {
       filterOpen === 'all' || filterOpen === 'favorites' ||
       (filterOpen === 'open' ? t.isOpen : !t.isOpen);
     const matchFav = filterOpen !== 'favorites' || favorites.includes(t.id);
+    // hackathonSlug가 null인 팀(일반 팀)은 대회 필터가 선택되지 않았을 때 항상 노출
     const matchHackathon = !filterHackathon || t.hackathonSlug === filterHackathon;
+    // 대회 없는 팀은 hackathonStatus가 null이므로 'ended' 필터에 걸리지 않음
     const isNotEnded = t.hackathonStatus !== 'ended';
     return matchSearch && matchOpen && matchFav && matchHackathon && isNotEnded;
   });
