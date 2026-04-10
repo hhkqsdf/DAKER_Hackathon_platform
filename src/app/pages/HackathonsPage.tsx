@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Search, Filter, Calendar, Users, Trophy, ArrowRight, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
-import { getStorage, Hackathon } from '../../lib/storage';
+import { getStorage, getActualParticipantCount, Hackathon } from '../../lib/storage';
 import { STATUS_CONFIG } from '../../lib/constants';
 
 const STATUS_FILTERS = [
@@ -84,7 +84,7 @@ function HackathonCard({ hackathon, index }: { hackathon: Hackathon; index: numb
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
               <Users size={11} />
-              {hackathon.participantCount}명 참가
+              {getActualParticipantCount(hackathon.slug)}명 참가
             </span>
             <span className="flex items-center gap-1 text-xs text-violet-400 group-hover:gap-2 transition-all">
               자세히 보기

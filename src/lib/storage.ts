@@ -2222,6 +2222,35 @@ export function unlockTeam(teamId: string): void {
 
 
 
+// ─── Participant Count (실시간 계산) ──────────────────────────
+
+/**
+ * 특정 해커톤에 참여한 유니크 사용자 수를 실시간으로 계산합니다.
+ * teams.members + leaderboards.memberTags 를 합산 후 중복 제거하여 반환합니다.
+ */
+export function getActualParticipantCount(slug: string): number {
+  const { userProfile, teams, leaderboards } = getStorage();
+
+  const uniqueTags = new Set<string>();
+
+  // 내가 이 해커톤에 참가 신청했으면 내 tag 포함
+  if (userProfile.joinedHackathons.includes(slug)) {
+    uniqueTags.add(userProfile.tag);
+  }
+
+  // teams에서 해당 슬러그의 모든 멤버 태그 수집
+  teams
+    .filter(t => t.hackathonSlug === slug)
+    .forEach(t => t.members.forEach(m => uniqueTags.add(m.tag)));
+
+  // leaderboards에서 해당 슬러그의 모든 memberTags 수집
+  leaderboards
+    .filter(lb => lb.hackathonSlug === slug)
+    .forEach(lb => lb.memberTags.forEach(tag => uniqueTags.add(tag)));
+
+  return uniqueTags.size;
+}
+
 // ─── Reset ───────────────────────────────────────
 export const resetStorageData = () => {
   if (typeof window === 'undefined') return;
