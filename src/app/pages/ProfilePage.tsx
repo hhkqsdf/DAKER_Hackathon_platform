@@ -1117,14 +1117,14 @@ export function ProfilePage() {
                 value: `${profile.joinedHackathons.length}개`,
               },
               {
+                icon: Trophy,
+                label: '완주한 대회',
+                value: `${totalHackathons}개`,
+              },
+              {
                 icon: Users,
                 label: '등록 스택',
                 value: `${profile.techStack.length}개 직군`,
-              },
-              {
-                icon: Trophy,
-                label: '총 스킬',
-                value: `${profile.techStack.reduce((sum, ts) => sum + ts.skills.length, 0)}개`,
               },
               {
                 icon: Send,

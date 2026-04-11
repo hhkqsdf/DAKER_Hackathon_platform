@@ -365,7 +365,7 @@ function ApplicantDetailModal({ app, isLocked, teamId, onClose }: {
           <div className="flex flex-col items-center justify-center p-2.5 rounded-xl gap-1"
             style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)' }}>
             <span className="text-sm" style={{ color: '#60a5fa', fontWeight: 800 }}>{appHackathonCount}</span>
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>대회 참가</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>완주한 대회</span>
           </div>
         </div>
 
