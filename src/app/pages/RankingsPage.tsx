@@ -267,7 +267,7 @@ export function RankingsPage() {
                   </>
                 ) : (
                   <>
-                    <span className="col-span-2 text-center">참가 수</span>
+                    <span className="col-span-2 text-center">완주한 대회 수</span>
                     <span className="col-span-2 text-center">최고 순위</span>
                     <span className="col-span-2 text-right">점수</span>
                   </>
